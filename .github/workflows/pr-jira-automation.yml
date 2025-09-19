@@ -35,7 +35,7 @@ jobs:
             const pr = context.payload.pull_request;
             const issueKey = process.env.ISSUE_KEY;
             if (!pr.title.includes(issueKey)) {
-              const newTitle = `${pr.title} [${issueKey}]`;
+              const newTitle = `${pr.title} - ${issueKey}`;
               await github.rest.pulls.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
