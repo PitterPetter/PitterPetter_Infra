@@ -1,0 +1,183 @@
+# 핵심 리소스 정의
+# - GKE Cluster
+# - Node Pool
+# - 기타 주요 인프라 리소스
+
+# GKE 클러스터 생성
+resource "google_container_cluster" "primary" {
+  name     = var.cluster_name
+  location = var.gcp_region
+  project  = "pitterpetter"
+
+  # 클러스터 삭제 시 노드 풀도 함께 삭제
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  # 네트워크 설정
+  network    = google_compute_network.vpc.name
+  subnetwork = google_compute_subnetwork.subnet.name
+
+  # IP 범위 설정
+  ip_allocation_policy {
+    cluster_secondary_range_name  = "pods-range"
+    services_secondary_range_name = "services-range"
+  }
+
+  # 마스터 인증 네트워크 설정
+  master_authorized_networks_config {
+    dynamic "cidr_blocks" {
+      for_each = var.master_authorized_networks
+      content {
+        cidr_block   = cidr_blocks.value.cidr_block
+        display_name = cidr_blocks.value.display_name
+      }
+    }
+  }
+
+  # 클러스터 기능 설정
+  addons_config {
+    http_load_balancing {
+      disabled = !var.cluster_http_load_balancing
+    }
+    horizontal_pod_autoscaling {
+      disabled = !var.cluster_horizontal_pod_autoscaling
+    }
+    network_policy_config {
+      disabled = true  # 개발환경에서는 네트워크 정책 비활성화
+    }
+  }
+
+  # 네트워크 정책 설정 (개발환경에서는 주석처리 - 단순화)
+  # network_policy {
+  #   enabled = var.cluster_network_policy
+  # }
+
+  # Kubernetes 버전 설정
+  min_master_version = var.gke_version
+
+  # 보안 설정
+  master_auth {
+    client_certificate_config {
+      issue_client_certificate = false
+    }
+  }
+
+  # 노드 풀 설정
+  node_config {
+    machine_type = var.node_machine_type
+    disk_size_gb = var.node_disk_size
+    disk_type    = var.node_disk_type
+    preemptible  = var.node_preemptible
+
+    # GKE 노드 태그
+    tags = ["gke-node"]
+
+    # 서비스 계정 설정
+    service_account = google_service_account.gke_node.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    # 메타데이터 설정
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+  }
+
+  # 자동 업그레이드 설정 (개발환경에서는 STABLE 채널 사용)
+  release_channel {
+    channel = "STABLE"  # REGULAR, RAPID, STABLE 중 STABLE이 가장 안정적
+  }
+
+  # 유지보수 정책 (개발환경에서는 주석처리 - GCP가 자동으로 관리)
+  # maintenance_policy {
+  #   recurring_window {
+  #     start_time = "2025-01-01T09:00:00Z"
+  #     end_time   = "2025-01-01T17:00:00Z"
+  #     recurrence = "FREQ=WEEKLY;BYDAY=SA"
+  #   }
+  # }
+
+  # 노드 자동 복구 (Autopilot 또는 cluster_autoscaling이 활성화된 경우에만 사용 가능)
+  # node_pool_auto_config {
+  #   network_tags {
+  #     tags = ["gke-node"]
+  #   }
+  # }
+
+  depends_on = [
+    google_compute_network.vpc,
+    google_compute_subnetwork.subnet,
+    google_service_account.gke_node,
+    google_project_iam_member.gke_node_roles
+  ]
+}
+
+# GKE 노드 풀 생성 (1개 노드 풀에 여러 노드)
+resource "google_container_node_pool" "primary_nodes" {
+  name       = var.node_pool_name
+  location   = var.gcp_region
+  cluster    = google_container_cluster.primary.name
+  project    = "pitterpetter"
+  node_count = var.node_count  # dev: 2개, prod: 3개
+
+  node_config {
+    machine_type = var.node_machine_type
+    disk_size_gb = var.node_disk_size
+    disk_type    = var.node_disk_type
+    preemptible  = var.node_preemptible
+
+    # GKE 노드 태그
+    tags = ["gke-node"]
+
+    # 서비스 계정 설정
+    service_account = google_service_account.gke_node.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    # 메타데이터 설정
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+
+    # 이미지 설정
+    image_type = "COS_CONTAINERD"
+  }
+
+  # 자동 스케일링 설정
+  autoscaling {
+    min_node_count = 1
+    max_node_count = 10
+  }
+
+  # 업그레이드 설정
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  depends_on = [google_container_cluster.primary]
+}
+
+# GKE 노드용 서비스 계정 생성
+resource "google_service_account" "gke_node" {
+  account_id   = "${var.environment}-gke-node-sa"
+  display_name = "GKE Node Service Account"
+  description  = "Service account for GKE nodes"
+}
+
+# 서비스 계정에 필요한 권한 부여
+resource "google_project_iam_member" "gke_node_roles" {
+  for_each = toset([
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
+    "roles/monitoring.viewer",
+    "roles/stackdriver.resourceMetadata.writer",
+    "roles/storage.objectViewer"
+  ])
+
+  project = "pitterpetter"
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.gke_node.email}"
+}
