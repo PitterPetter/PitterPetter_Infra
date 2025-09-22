@@ -1,25 +1,31 @@
 # PitterPetter Infrastructure
 
-GCP 기반의 Kubernetes 인프라스트럭처를 Terraform으로 관리합니다.
+GCP 기반의 Kubernetes 인프라스트럭처를 Terraform으로 관리하는 저장소입니다.
 
 ## 📁 프로젝트 구조
 
 ```
-infra-repo/
-├── backend.tf              # GCS backend 정의
-├── providers.tf            # 모든 provider(google, kubernetes, helm) 정의
-├── variables.tf            # 모든 변수 선언
-├── networking.tf           # VPC, Subnet, Firewall, NAT 등 네트워크 리소스 정의
-├── main.tf                 # 핵심 리소스 정의 (GKE cluster)
-├── kubernetes.tf           # Kubernetes/Helm을 이용한 애플리케이션 배포 정의
-├── outputs.tf              # output 정의
-├── cleanup.sh              # 인프라 정리 스크립트
-├── setup.sh                # 새로운 팀원을 위한 자동 설정 스크립트
-├── QUICKSTART.md           # 빠른 시작 가이드
-├── README.md               # 상세 문서
-└── envs/
-    ├── dev.tfvars          # 개발 환경 변수
-    └── prod.tfvars         # 운영 환경 변수
+PitterPetter_Infra/
+├── main.tf                    # 핵심 인프라 (VPC, 서브넷, GKE 클러스터, 기본 서비스 계정)
+├── networking.tf              # 네트워크 보안 (방화벽, NAT Gateway, Cloud Router)
+├── gke.tf                    # GKE 노드 풀 및 클러스터 세부 설정
+├── ingress.tf                # Nginx Ingress Controller 배포 및 설정
+├── argocd.tf                 # ArgoCD 배포 및 설정
+├── workflows.tf              # Argo Workflows 배포 및 설정
+├── rollouts.tf               # Argo Rollouts 배포 및 설정
+├── providers.tf              # Provider 설정
+├── variables.tf              # 변수 정의
+├── outputs.tf                # 출력값 정의
+├── backend.tf                # 백엔드 설정
+├── env/                      # 환경별 설정
+│   ├── dev.tfvars           # 개발환경 변수
+│   └── prod.tfvars          # 운영환경 변수
+├── scripts/                  # 유틸리티 스크립트
+│   └── cleanup.sh           # 정리 스크립트
+├── docs/                    # 문서
+│   ├── QUICKSTART.md        # 빠른 시작 가이드
+│   └── INGRESS_GUIDE.md     # Ingress Controller 가이드
+└── README.md               # 이 파일
 ```
 
 ## 🛠️ 사전 요구사항
@@ -81,65 +87,31 @@ gcloud iam service-accounts create terraform-sa \
     --description="Service account for Terraform operations"
 ```
 
-## 🚀 로컬 개발 환경 설정
+## 🚀 빠른 시작
 
-### 🎯 빠른 시작 (권장)
-```bash
-# 1. 저장소 클론
-git clone <repository-url>
-cd PitterPetter_Infra
-
-# 2. 자동 설정 스크립트 실행
-./setup.sh
-
-# 3. 인프라 배포
-terraform apply -var-file=envs/dev.tfvars -auto-approve
-
-# 4. 클러스터 연결
-gcloud container clusters get-credentials pitterpetter-dev-cluster \
-    --region asia-northeast3 --project pitterpetter
-```
-
-### 📖 상세 설정 (수동)
-
-#### 1. 저장소 클론
+### 1. 저장소 클론
 ```bash
 git clone <repository-url>
 cd PitterPetter_Infra
 ```
 
-#### 2. 환경 변수 설정
-```bash
-# .env 파일 생성 (선택사항)
-cat > .env << EOF
-export GOOGLE_PROJECT_ID="pitterpetter"
-export GOOGLE_REGION="asia-northeast3"
-export GOOGLE_ZONE="asia-northeast3-a"
-EOF
+### 2. 인프라 배포
 
-# 환경 변수 로드
-source .env
-```
-
-#### 3. Terraform 초기화
+#### 개발환경 배포
 ```bash
-# Terraform 초기화
 terraform init
-
-# Provider 다운로드 확인
-terraform providers
+terraform plan -var-file="env/dev.tfvars"
+terraform apply -var-file="env/dev.tfvars"
 ```
 
-#### 4. 개발 환경 배포
+#### 운영환경 배포
 ```bash
-# 계획 확인
-terraform plan -var-file=envs/dev.tfvars
-
-# 배포 실행
-terraform apply -var-file=envs/dev.tfvars -auto-approve
+terraform init
+terraform plan -var-file="env/prod.tfvars"
+terraform apply -var-file="env/prod.tfvars"
 ```
 
-#### 5. Kubernetes 클러스터 연결
+### 3. 클러스터 연결
 ```bash
 # GKE 클러스터 인증 정보 가져오기
 gcloud container clusters get-credentials pitterpetter-dev-cluster \
@@ -151,19 +123,63 @@ kubectl get nodes
 kubectl get namespaces
 ```
 
-### 📚 추가 문서
-- **빠른 시작**: [QUICKSTART.md](./QUICKSTART.md) - 5분 만에 시작하기
-- **자동 설정**: `./setup.sh` - 모든 도구를 자동으로 설치하고 설정
+### 4. 서비스 접속
+
+#### ArgoCD 접속
+```bash
+# 포트 포워딩
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# 웹 브라우저에서 접속
+# https://localhost:8080
+# 사용자명: admin
+# 비밀번호: dev-admin123! (개발환경)
+```
+
+#### Argo Workflows 접속
+```bash
+# 포트 포워딩
+kubectl port-forward svc/argo-workflows-server -n argo 2746:2746
+
+# 웹 브라우저에서 접속
+# https://localhost:2746
+```
+
+#### Argo Rollouts 접속
+```bash
+# 포트 포워딩
+kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:3100
+
+# 웹 브라우저에서 접속
+# https://localhost:3100
+```
+
+## 🏗️ 인프라 구성 요소
+
+### 핵심 인프라
+- **Google Kubernetes Engine (GKE)**: 컨테이너 오케스트레이션
+- **Virtual Private Cloud (VPC)**: 네트워크 격리 및 보안
+- **Cloud NAT**: 아웃바운드 인터넷 접근
+
+### GitOps 및 배포
+- **ArgoCD**: GitOps 기반 지속적 배포
+- **Argo Workflows**: 워크플로우 오케스트레이션
+- **Argo Rollouts**: 고급 배포 전략 (Blue-Green, Canary)
+
+### 모니터링 및 보안
+- **Cloud Logging**: 중앙화된 로그 관리
+- **Cloud Monitoring**: 메트릭 수집 및 알림
+- **Firewall Rules**: 네트워크 보안 정책
 
 ## 🔧 개발 워크플로우
 
 ### 일상적인 개발 작업
 ```bash
 # 1. 변경사항 계획 확인
-terraform plan -var-file=envs/dev.tfvars
+terraform plan -var-file="env/dev.tfvars"
 
 # 2. 변경사항 적용
-terraform apply -var-file=envs/dev.tfvars
+terraform apply -var-file="env/dev.tfvars"
 
 # 3. 상태 확인
 terraform show
@@ -172,8 +188,8 @@ terraform output
 
 ### 새로운 환경 변수 추가
 1. `variables.tf`에 변수 정의
-2. `envs/dev.tfvars`에 값 설정
-3. `envs/prod.tfvars`에 값 설정
+2. `env/dev.tfvars`에 값 설정
+3. `env/prod.tfvars`에 값 설정
 4. 코드에서 변수 사용
 
 ### 새로운 리소스 추가
@@ -182,30 +198,53 @@ terraform output
 3. `terraform plan`으로 계획 확인
 4. `terraform apply`로 적용
 
+## 🌐 서비스 접속 방법
+
+### ArgoCD (GitOps)
+**URL**: `https://34.64.212.163` (Host: `argocd.pitterpetter.com`)
+- **사용자명**: `admin`
+- **비밀번호**: `UIA1qqIsXzKkearS` (또는 `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d`)
+
+**접속 방법:**
+1. **브라우저 접속**: `https://34.64.212.163`
+   - 보안 경고가 나타나면 "고급" → "안전하지 않은 사이트로 이동" 클릭
+2. **Port Forward**: `kubectl port-forward svc/argocd-server -n argocd 8080:443`
+   - 그 후 `https://localhost:8080`으로 접속
+
+### Argo Workflows (워크플로우 관리)
+**URL**: `https://34.64.212.163` (Host: `workflows.pitterpetter.com`)
+
+### Argo Rollouts (배포 관리)
+**URL**: `https://34.64.212.163` (Host: `rollouts.pitterpetter.com`)
+
+### Ingress Controller 상태 확인
+```bash
+# Ingress Controller 상태
+kubectl get pods -n ingress-nginx
+kubectl get svc -n ingress-nginx
+
+# 모든 Ingress 확인
+kubectl get ingress -A
+```
+
 ## 🧹 인프라 정리
 
 ### 자동 정리 (권장)
 ```bash
 # cleanup.sh 스크립트 실행
-chmod +x cleanup.sh
-./cleanup.sh
+chmod +x scripts/cleanup.sh
+./scripts/cleanup.sh
 ```
 
 ### 수동 정리
 ```bash
 # 1. Kubernetes 리소스 정리
-kubectl delete namespace ingress-nginx --force --grace-period=0
+kubectl delete namespace argocd --force --grace-period=0
+kubectl delete namespace argo --force --grace-period=0
+kubectl delete namespace argo-rollouts --force --grace-period=0
 
-# 2. Terraform state 정리
-terraform state rm kubernetes_namespace.nginx_ingress
-
-# 3. GKE 클러스터 수동 삭제 (필요시)
-gcloud container clusters delete pitterpetter-dev-cluster \
-    --region asia-northeast3 \
-    --project pitterpetter --quiet
-
-# 4. Terraform destroy
-terraform destroy -var-file=envs/dev.tfvars -auto-approve
+# 2. Terraform destroy
+terraform destroy -var-file="env/dev.tfvars" -auto-approve
 ```
 
 ## 🚨 문제 해결 가이드
@@ -233,8 +272,9 @@ terraform providers
 ```bash
 # 문제: Namespace stuck in Terminating state
 # 해결: 강제 삭제
-kubectl delete namespace ingress-nginx --force --grace-period=0
-terraform state rm kubernetes_namespace.nginx_ingress
+kubectl delete namespace argocd --force --grace-period=0
+kubectl delete namespace argo --force --grace-period=0
+kubectl delete namespace argo-rollouts --force --grace-period=0
 ```
 
 #### 4. GKE 클러스터 삭제 지연
@@ -244,23 +284,14 @@ terraform state rm kubernetes_namespace.nginx_ingress
 gcloud container clusters delete pitterpetter-dev-cluster \
     --region asia-northeast3 \
     --project=pitterpetter --quiet
-terraform state rm google_container_cluster.primary
 ```
 
 #### 5. Terraform State 불일치
 ```bash
 # 문제: State drift
 # 해결: State 새로고침
-terraform refresh -var-file=envs/dev.tfvars
-terraform plan -var-file=envs/dev.tfvars
-```
-
-#### 6. IP 주소 충돌
-```bash
-# 문제: IP address already in use
-# 해결: 다른 IP 대역 사용
-# envs/dev.tfvars에서 subnet_ip_cidr 변경
-subnet_ip_cidr = "10.1.0.0/24"  # 10.0.0.0/24 대신
+terraform refresh -var-file="env/dev.tfvars"
+terraform plan -var-file="env/dev.tfvars"
 ```
 
 ### 디버깅 명령어
@@ -278,24 +309,8 @@ gcloud compute networks list
 # Kubernetes 리소스 확인
 kubectl get all --all-namespaces
 kubectl describe nodes
-kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd
 ```
-
-## 🔧 주요 개선사항
-
-### 1. 타임아웃 설정 개선
-- **Kubernetes 리소스**: 네임스페이스 삭제 타임아웃 10분으로 증가
-- **Helm 차트**: 배포 타임아웃 10분으로 증가
-- **변수화**: `kubernetes_timeout`, `helm_timeout` 변수로 관리
-
-### 2. 의존성 설정 강화
-- **명시적 의존성**: `depends_on`으로 리소스 생성 순서 보장
-- **서비스 계정**: GKE 클러스터 생성 전 IAM 권한 설정 완료 대기
-
-### 3. 자동 정리 스크립트
-- **cleanup.sh**: Destroy 시 발생할 수 있는 문제들을 자동으로 해결
-- **Kubernetes 네임스페이스**: Finalizers 문제 해결
-- **GKE 클러스터**: 수동 삭제 후 State 정리
 
 ## 📊 리소스 구성
 
@@ -309,12 +324,12 @@ kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 - **클러스터**: `pitterpetter-dev-cluster`
 - **노드 풀**: `pitterpetter-nodes` (2개 노드)
 - **머신 타입**: e2-small (개발환경)
-- **자동 스케일링**: 1-10개 노드
+- **자동 스케일링**: 2-5개 노드
 
 ### Kubernetes 리소스
-- **네임스페이스**: `ingress-nginx`
-- **Nginx Ingress Controller**: LoadBalancer 타입
-- **Helm 차트**: ingress-nginx v4.13.2
+- **ArgoCD**: `argocd` 네임스페이스
+- **Argo Workflows**: `argo` 네임스페이스
+- **Argo Rollouts**: `argo-rollouts` 네임스페이스
 
 ## 🔒 보안 설정
 
@@ -333,12 +348,14 @@ kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 - **머신 타입**: e2-small
 - **선점형**: true (비용 절약)
 - **NAT Gateway**: true
+- **ArgoCD 비밀번호**: dev-admin123!
 
 ### 운영환경 (prod.tfvars)
 - **노드 수**: 3개
 - **머신 타입**: e2-medium
 - **선점형**: false (안정성)
 - **NAT Gateway**: true
+- **ArgoCD 비밀번호**: prod-admin-2024!
 
 ## 💰 비용 최적화
 
@@ -354,7 +371,7 @@ node_machine_type = "e2-small"
 node_count = 2
 
 # 4. 사용하지 않을 때 클러스터 삭제
-./cleanup.sh
+./scripts/cleanup.sh
 ```
 
 ### 비용 모니터링
@@ -390,26 +407,27 @@ jobs:
         with:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
       - name: Terraform Init
-        run: terraform init
+        run: cd terraform && terraform init
       - name: Terraform Plan
-        run: terraform plan -var-file=envs/dev.tfvars
+        run: cd terraform && terraform plan -var-file="environments/dev.tfvars"
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -var-file=envs/dev.tfvars -auto-approve
+        run: cd terraform && terraform apply -var-file="environments/dev.tfvars" -auto-approve
 ```
 
 ## 📚 추가 자료
 
+### 프로젝트 문서
+- **[빠른 시작 가이드](./docs/QUICKSTART.md)**: 새로운 팀원을 위한 5분 설정 가이드
+- **[Ingress Controller 가이드](./docs/INGRESS_GUIDE.md)**: Nginx Ingress Controller 상세 가이드
+
 ### 유용한 링크
 - [Terraform GCP Provider 문서](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
 - [GKE 클러스터 관리 가이드](https://cloud.google.com/kubernetes-engine/docs)
-- [Kubernetes Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
+- [ArgoCD 공식 문서](https://argo-cd.readthedocs.io/)
+- [Argo Workflows 문서](https://argoproj.github.io/argo-workflows/)
+- [Argo Rollouts 문서](https://argoproj.github.io/argo-rollouts/)
 - [Helm 차트 가이드](https://helm.sh/docs/)
-
-### 팀 내부 문서
-- [개발 환경 설정 가이드](./docs/dev-setup.md)
-- [배포 프로세스](./docs/deployment.md)
-- [모니터링 설정](./docs/monitoring.md)
 
 ## 🤝 기여하기
 
@@ -418,3 +436,7 @@ jobs:
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## 📞 지원
+
+문제가 발생하거나 질문이 있으시면 이슈를 생성해 주세요.
