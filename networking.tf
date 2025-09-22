@@ -1,35 +1,9 @@
-# 네트워크 리소스 정의
-# - VPC
-# - Subnet
+# 네트워크 보안 및 고급 설정
 # - Firewall Rules
 # - NAT Gateway
 # - Cloud Router
-
-# VPC 생성
-resource "google_compute_network" "vpc" {
-  name                    = var.vpc_name
-  auto_create_subnetworks = false
-  mtu                     = 1460
-}
-
-# 서브넷 생성
-resource "google_compute_subnetwork" "subnet" {
-  name          = var.subnet_name
-  ip_cidr_range = var.subnet_ip_cidr
-  region        = var.gcp_region
-  network       = google_compute_network.vpc.id
-
-  # GKE용 보조 IP 범위 설정
-  secondary_ip_range {
-    range_name    = "pods-range"
-    ip_cidr_range = var.pods_ip_cidr
-  }
-
-  secondary_ip_range {
-    range_name    = "services-range"
-    ip_cidr_range = var.services_ip_cidr
-  }
-}
+# 
+# 핵심 네트워크 리소스(VPC, 서브넷)는 main.tf에서 관리됩니다.
 
 # Cloud Router 생성 (NAT Gateway용)
 resource "google_compute_router" "router" {
@@ -39,13 +13,21 @@ resource "google_compute_router" "router" {
   network = google_compute_network.vpc.id
 }
 
+# 고정 외부 IP 할당
+resource "google_compute_address" "nat_ip" {
+  count  = var.enable_nat_gateway ? 1 : 0
+  name   = "${var.vpc_name}-nat-ip"
+  region = var.gcp_region
+}
+
 # NAT Gateway 생성
 resource "google_compute_router_nat" "nat" {
   count                              = var.enable_nat_gateway ? 1 : 0
   name                               = "${var.vpc_name}-nat"
   router                             = google_compute_router.router[0].name
   region                             = var.gcp_region
-  nat_ip_allocate_option             = "AUTO_ONLY"
+  nat_ip_allocate_option             = "MANUAL_ONLY"
+  nat_ips                            = [google_compute_address.nat_ip[0].self_link]
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 
   log_config {

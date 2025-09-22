@@ -7,6 +7,7 @@
 variable "gcp_project_id" {
   type        = string
   description = "리소스를 생성할 GCP 프로젝트 ID"
+  default     = "pitterpetter"
 }
 
 variable "gcp_region" {
@@ -37,13 +38,13 @@ variable "environment" {
 variable "vpc_name" {
   type        = string
   description = "생성할 VPC의 이름"
-  default     = "pitterpetter-vpc"
+  default     = "pitterpetter-dev-vpc"
 }
 
 variable "subnet_name" {
   type        = string
   description = "생성할 서브넷의 이름"
-  default     = "pitterpetter-subnet"
+  default     = "pitterpetter-dev-subnet"
 }
 
 variable "subnet_ip_cidr" {
@@ -66,7 +67,7 @@ variable "services_ip_cidr" {
 
 variable "enable_nat_gateway" {
   type        = bool
-  description = "NAT Gateway 활성화 여부 (비용 절약을 위해 false 가능)"
+  description = "NAT Gateway 활성화 여부"
   default     = true
 }
 
@@ -76,7 +77,7 @@ variable "enable_nat_gateway" {
 variable "cluster_name" {
   type        = string
   description = "GKE 클러스터 이름"
-  default     = "pitterpetter-cluster"
+  default     = "pitterpetter-dev-cluster"
 }
 
 variable "gke_version" {
@@ -114,7 +115,6 @@ variable "master_authorized_networks" {
 
 # =============================================================================
 # GKE 노드 풀 설정 변수
-# =============================================================================
 variable "node_pool_name" {
   type        = string
   description = "노드 풀 이름"
@@ -123,8 +123,20 @@ variable "node_pool_name" {
 
 variable "node_count" {
   type        = number
-  description = "노드 수"
-  default     = 3
+  description = "초기 노드 수 (자동 스케일링으로 변경됨)"
+  default     = 2
+}
+
+variable "min_node_count" {
+  type        = number
+  description = "최소 노드 수 (자동 스케일링)"
+  default     = 1
+}
+
+variable "max_node_count" {
+  type        = number
+  description = "최대 노드 수 (자동 스케일링)"
+  default     = 5
 }
 
 variable "node_machine_type" {
@@ -147,8 +159,8 @@ variable "node_disk_type" {
 
 variable "node_preemptible" {
   type        = bool
-  description = "선점형 인스턴스 사용 여부 (비용 절약)"
-  default     = false
+  description = "선점형 인스턴스 사용 여부 (개발환경: true, 운영환경: false)"
+  default     = null  # 환경별로 자동 설정
 }
 
 # =============================================================================
@@ -167,43 +179,86 @@ variable "bucket_location" {
 }
 
 # =============================================================================
-# 애플리케이션 배포 변수
+# ArgoCD 설정 변수
 # =============================================================================
-variable "nginx_chart_version" {
-  type        = string
-  description = "배포할 Nginx Helm 차트 버전"
-  default     = "4.13.2"
+variable "argocd_enabled" {
+  type        = bool
+  description = "ArgoCD 설치 여부"
+  default     = true
 }
 
-variable "nginx_namespace" {
+variable "argocd_namespace" {
   type        = string
-  description = "Nginx Ingress Controller 네임스페이스"
-  default     = "ingress-nginx"
+  description = "ArgoCD 네임스페이스"
+  default     = "argocd"
 }
 
-variable "nginx_release_name" {
+variable "argocd_chart_version" {
   type        = string
-  description = "Nginx Helm 릴리스 이름"
-  default     = "nginx-ingress"
+  description = "ArgoCD Helm 차트 버전"
+  default     = "5.51.6"
 }
 
-variable "domain_name" {
+variable "argocd_admin_password" {
   type        = string
-  description = "도메인 이름 (선택사항)"
-  default     = ""
+  description = "ArgoCD 관리자 비밀번호"
+  default     = "admin123!"
+  sensitive   = true
 }
 
 # =============================================================================
-# 타임아웃 설정 변수
+# Argo Workflows 설정 변수
 # =============================================================================
-variable "kubernetes_timeout" {
-  type        = string
-  description = "Kubernetes 리소스 타임아웃 설정"
-  default     = "10m"
+variable "argoworkflows_enabled" {
+  type        = bool
+  description = "Argo Workflows 설치 여부"
+  default     = true
 }
 
-variable "helm_timeout" {
-  type        = number
-  description = "Helm 차트 배포 타임아웃 (초)"
-  default     = 600
+variable "argoworkflows_namespace" {
+  type        = string
+  description = "Argo Workflows 네임스페이스"
+  default     = "argo"
+}
+
+variable "argoworkflows_chart_version" {
+  type        = string
+  description = "Argo Workflows Helm 차트 버전"
+  default     = "0.40.0"
+}
+
+# =============================================================================
+# Ingress Controller 설정 변수
+# =============================================================================
+variable "ingress_nginx_enabled" {
+  type        = bool
+  description = "Nginx Ingress Controller 설치 여부"
+  default     = true
+}
+
+variable "ingress_nginx_chart_version" {
+  type        = string
+  description = "Nginx Ingress Controller Helm 차트 버전"
+  default     = "4.8.3"
+}
+
+# =============================================================================
+# Argo Rollouts 설정 변수
+# =============================================================================
+variable "argo_rollouts_enabled" {
+  type        = bool
+  description = "Argo Rollouts 설치 여부"
+  default     = true
+}
+
+variable "argo_rollouts_namespace" {
+  type        = string
+  description = "Argo Rollouts 네임스페이스"
+  default     = "argo-rollouts"
+}
+
+variable "argo_rollouts_chart_version" {
+  type        = string
+  description = "Argo Rollouts Helm 차트 버전"
+  default     = "2.31.1"
 }

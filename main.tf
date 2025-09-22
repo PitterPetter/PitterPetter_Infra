@@ -3,11 +3,11 @@
 # - Node Pool
 # - 기타 주요 인프라 리소스
 
-# GKE 클러스터 생성
+# GKE 클러스터 생성 (환경별로 Regional/Zonal 선택)
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
-  location = var.gcp_region
-  project  = "pitterpetter"
+  location = var.environment == "prod" ? var.gcp_region : var.gcp_zone
+  project  = var.gcp_project_id
 
   # 클러스터 삭제 시 노드 풀도 함께 삭제
   remove_default_node_pool = true
@@ -23,14 +23,18 @@ resource "google_container_cluster" "primary" {
     services_secondary_range_name = "services-range"
   }
 
-  # 마스터 인증 네트워크 설정
+  # Private Cluster 설정 (IP 할당량 절약 + 보안 강화)
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false  # 외부에서 접근 가능하도록 유지
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+
+  # 마스터 인증 네트워크 설정 (모든 IP 허용)
   master_authorized_networks_config {
-    dynamic "cidr_blocks" {
-      for_each = var.master_authorized_networks
-      content {
-        cidr_block   = cidr_blocks.value.cidr_block
-        display_name = cidr_blocks.value.display_name
-      }
+    cidr_blocks {
+      cidr_block   = "0.0.0.0/0"
+      display_name = "all-ips"
     }
   }
 
@@ -62,27 +66,7 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # 노드 풀 설정
-  node_config {
-    machine_type = var.node_machine_type
-    disk_size_gb = var.node_disk_size
-    disk_type    = var.node_disk_type
-    preemptible  = var.node_preemptible
-
-    # GKE 노드 태그
-    tags = ["gke-node"]
-
-    # 서비스 계정 설정
-    service_account = google_service_account.gke_node.email
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
-    ]
-
-    # 메타데이터 설정
-    metadata = {
-      disable-legacy-endpoints = "true"
-    }
-  }
+  # 노드 풀 설정은 gke.tf의 google_container_node_pool에서 관리
 
   # 자동 업그레이드 설정 (개발환경에서는 STABLE 채널 사용)
   release_channel {
@@ -105,6 +89,11 @@ resource "google_container_cluster" "primary" {
   #   }
   # }
 
+
+  # 삭제 보호 설정 (개발환경에서는 비활성화)
+  deletion_protection = false
+
+
   depends_on = [
     google_compute_network.vpc,
     google_compute_subnetwork.subnet,
@@ -113,52 +102,37 @@ resource "google_container_cluster" "primary" {
   ]
 }
 
-# GKE 노드 풀 생성 (1개 노드 풀에 여러 노드)
-resource "google_container_node_pool" "primary_nodes" {
-  name       = var.node_pool_name
-  location   = var.gcp_region
-  cluster    = google_container_cluster.primary.name
-  project    = "pitterpetter"
-  node_count = var.node_count  # dev: 2개, prod: 3개
+# =============================================================================
+# 핵심 네트워크 리소스
+# =============================================================================
 
-  node_config {
-    machine_type = var.node_machine_type
-    disk_size_gb = var.node_disk_size
-    disk_type    = var.node_disk_type
-    preemptible  = var.node_preemptible
-
-    # GKE 노드 태그
-    tags = ["gke-node"]
-
-    # 서비스 계정 설정
-    service_account = google_service_account.gke_node.email
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
-    ]
-
-    # 메타데이터 설정
-    metadata = {
-      disable-legacy-endpoints = "true"
-    }
-
-    # 이미지 설정
-    image_type = "COS_CONTAINERD"
-  }
-
-  # 자동 스케일링 설정
-  autoscaling {
-    min_node_count = 1
-    max_node_count = 10
-  }
-
-  # 업그레이드 설정
-  management {
-    auto_repair  = true
-    auto_upgrade = true
-  }
-
-  depends_on = [google_container_cluster.primary]
+# VPC 생성
+resource "google_compute_network" "vpc" {
+  name                    = var.vpc_name
+  auto_create_subnetworks = false
+  mtu                     = 1460
 }
+
+# 서브넷 생성
+resource "google_compute_subnetwork" "subnet" {
+  name          = var.subnet_name
+  ip_cidr_range = var.subnet_ip_cidr
+  region        = var.gcp_region
+  network       = google_compute_network.vpc.id
+
+  # GKE용 보조 IP 범위 설정
+  secondary_ip_range {
+    range_name    = "pods-range"
+    ip_cidr_range = var.pods_ip_cidr
+  }
+
+  secondary_ip_range {
+    range_name    = "services-range"
+    ip_cidr_range = var.services_ip_cidr
+  }
+}
+
+# GKE 노드 풀은 gke.tf에서 관리됩니다.
 
 # GKE 노드용 서비스 계정 생성
 resource "google_service_account" "gke_node" {
@@ -177,7 +151,7 @@ resource "google_project_iam_member" "gke_node_roles" {
     "roles/storage.objectViewer"
   ])
 
-  project = "pitterpetter"
+  project = var.gcp_project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.gke_node.email}"
 }
