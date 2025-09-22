@@ -46,7 +46,7 @@ cd PitterPetter_Infra
 
 # Terraform 초기화 및 배포
 terraform init
-terraform apply -var-file=envs/dev.tfvars -auto-approve
+terraform apply -var-file=env/dev.tfvars -auto-approve
 ```
 
 ## 🎯 일상적인 사용법
@@ -55,20 +55,46 @@ terraform apply -var-file=envs/dev.tfvars -auto-approve
 ```bash
 # 클러스터 연결
 gcloud container clusters get-credentials pitterpetter-dev-cluster \
-    --region asia-northeast3 --project pitterpetter
+    --zone asia-northeast3-a --project pitterpetter
 
 # 상태 확인
 kubectl get nodes
 kubectl get namespaces
+kubectl get pods -A
+```
+
+### ArgoCD 접속하기
+```bash
+# 방법 1: 직접 접속 (브라우저에서 보안 경고 무시)
+# URL: https://34.64.212.163
+# 사용자명: admin
+# 비밀번호: UIA1qqIsXzKkearS
+
+# 방법 2: Port Forward 사용
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+# 그 후 https://localhost:8080으로 접속
+
+# 비밀번호 확인 (필요시)
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+```
+
+### 다른 서비스 접속하기
+```bash
+# Argo Workflows: https://34.64.212.163 (Host: workflows.pitterpetter.com)
+# Argo Rollouts: https://34.64.212.163 (Host: rollouts.pitterpetter.com)
+
+# Ingress Controller 상태 확인
+kubectl get svc -n ingress-nginx
+kubectl get ingress -A
 ```
 
 ### 인프라 정리하기
 ```bash
 # 자동 정리 (권장)
-./cleanup.sh
+./scripts/cleanup.sh
 
 # 또는 수동 정리
-terraform destroy -var-file=envs/dev.tfvars -auto-approve
+terraform destroy -var-file=env/dev.tfvars -auto-approve
 ```
 
 ## 🔧 자주 사용하는 명령어
@@ -76,10 +102,10 @@ terraform destroy -var-file=envs/dev.tfvars -auto-approve
 ### Terraform 명령어
 ```bash
 # 변경사항 확인
-terraform plan -var-file=envs/dev.tfvars
+terraform plan -var-file=env/dev.tfvars
 
 # 변경사항 적용
-terraform apply -var-file=envs/dev.tfvars
+terraform apply -var-file=env/dev.tfvars
 
 # 상태 확인
 terraform show
@@ -118,6 +144,7 @@ gcloud compute networks list
 ```bash
 gcloud auth login
 gcloud auth application-default login
+gcloud config set project pitterpetter
 ```
 
 #### 2. "Provider not found"
@@ -125,16 +152,39 @@ gcloud auth application-default login
 terraform init -upgrade
 ```
 
-#### 3. "Namespace stuck in Terminating"
+#### 3. "ArgoCD 접속 안됨"
 ```bash
-kubectl delete namespace ingress-nginx --force --grace-period=0
-terraform state rm kubernetes_namespace.nginx_ingress
+# Ingress Controller 상태 확인
+kubectl get pods -n ingress-nginx
+kubectl get ingress -n argocd
+
+# ArgoCD 서비스 상태 확인
+kubectl get svc -n argocd
+kubectl get pods -n argocd
+
+# Port Forward로 접속 시도
+kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-#### 4. "Cluster deletion timeout"
+#### 4. "SSL 인증서 오류"
+```bash
+# 브라우저에서 "고급" → "안전하지 않은 사이트로 이동" 클릭
+# 또는 Port Forward 사용
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+#### 5. "Namespace stuck in Terminating"
+```bash
+kubectl delete namespace argocd --force --grace-period=0
+kubectl delete namespace argo --force --grace-period=0
+kubectl delete namespace argo-rollouts --force --grace-period=0
+kubectl delete namespace ingress-nginx --force --grace-period=0
+```
+
+#### 6. "Cluster deletion timeout"
 ```bash
 gcloud container clusters delete pitterpetter-dev-cluster \
-    --region asia-northeast3 --project=pitterpetter --quiet
+    --zone asia-northeast3-a --project=pitterpetter --quiet
 terraform state rm google_container_cluster.primary
 ```
 

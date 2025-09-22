@@ -8,11 +8,15 @@ echo "🧹 PitterPetter Infrastructure Cleanup 시작..."
 
 # 1. Kubernetes 네임스페이스 강제 삭제 (Finalizers 문제 해결)
 echo "📦 Kubernetes 네임스페이스 정리 중..."
-kubectl delete namespace ingress-nginx --force --grace-period=0 2>/dev/null || echo "네임스페이스가 이미 삭제되었거나 존재하지 않습니다."
+kubectl delete namespace argocd --force --grace-period=0 2>/dev/null || echo "ArgoCD 네임스페이스가 이미 삭제되었거나 존재하지 않습니다."
+kubectl delete namespace argo --force --grace-period=0 2>/dev/null || echo "Argo Workflows 네임스페이스가 이미 삭제되었거나 존재하지 않습니다."
+kubectl delete namespace argo-rollouts --force --grace-period=0 2>/dev/null || echo "Argo Rollouts 네임스페이스가 이미 삭제되었거나 존재하지 않습니다."
 
 # 2. Terraform State에서 Kubernetes 리소스 제거
 echo "🗂️ Terraform State 정리 중..."
-terraform state rm kubernetes_namespace.nginx_ingress 2>/dev/null || echo "Kubernetes 네임스페이스가 State에 없습니다."
+terraform state rm kubernetes_namespace.argocd 2>/dev/null || echo "ArgoCD 네임스페이스가 State에 없습니다."
+terraform state rm kubernetes_namespace.argoworkflows 2>/dev/null || echo "Argo Workflows 네임스페이스가 State에 없습니다."
+terraform state rm kubernetes_namespace.argo_rollouts 2>/dev/null || echo "Argo Rollouts 네임스페이스가 State에 없습니다."
 
 # 3. GKE 클러스터 상태 확인 및 수동 삭제 (필요시)
 echo "☸️ GKE 클러스터 상태 확인 중..."
@@ -26,6 +30,6 @@ fi
 
 # 4. Terraform Destroy 실행
 echo "💥 Terraform Destroy 실행 중..."
-terraform destroy -var-file=envs/dev.tfvars -auto-approve
+terraform destroy -var-file=env/dev.tfvars -auto-approve
 
 echo "✅ 정리 완료!"
