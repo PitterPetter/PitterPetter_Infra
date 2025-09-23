@@ -68,100 +68,100 @@ resource "helm_release" "argocd" {
           "admin.passwordMtime" = "2024-01-01T00:00:00Z"
         }
         
-        # 리소스 제한 (개발환경 최적화)
+        # 리소스 제한 (CPU 부족 문제 해결을 위한 증가)
         resources = {
           limits = {
-            cpu    = "100m"
-            memory = "128Mi"
+            cpu    = "500m"
+            memory = "512Mi"
           }
           requests = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "200m"
+            memory = "256Mi"
           }
         }
       }
       
-      # ArgoCD Controller 설정 (개발환경 최적화)
+      # ArgoCD Controller 설정 (CPU 부족 문제 해결을 위한 증가)
       controller = {
         resources = {
           limits = {
-            cpu    = "100m"
-            memory = "128Mi"
+            cpu    = "500m"
+            memory = "512Mi"
           }
           requests = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "200m"
+            memory = "256Mi"
           }
         }
       }
       
-      # ArgoCD Repo Server 설정 (개발환경 최적화)
+      # ArgoCD Repo Server 설정 (CPU 부족 문제 해결을 위한 증가)
       repoServer = {
         resources = {
           limits = {
-            cpu    = "100m"
-            memory = "128Mi"
+            cpu    = "500m"
+            memory = "512Mi"
           }
           requests = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "200m"
+            memory = "256Mi"
           }
         }
       }
       
-      # ArgoCD ApplicationSet Controller 설정 (개발환경 최적화)
+      # ArgoCD ApplicationSet Controller 설정 (CPU 부족 문제 해결을 위한 증가)
       applicationSet = {
         enabled = true
         resources = {
           limits = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "300m"
+            memory = "384Mi"
           }
           requests = {
-            cpu    = "25m"
-            memory = "32Mi"
+            cpu    = "150m"
+            memory = "192Mi"
           }
         }
       }
       
-      # ArgoCD Redis 설정 (개발환경 최적화)
+      # ArgoCD Redis 설정 (CPU 부족 문제 해결을 위한 증가)
       redis = {
         resources = {
           limits = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "300m"
+            memory = "384Mi"
           }
           requests = {
-            cpu    = "25m"
-            memory = "32Mi"
+            cpu    = "150m"
+            memory = "192Mi"
           }
         }
       }
       
-      # ArgoCD Dex Server 설정 (개발환경 최적화)
+      # ArgoCD Dex Server 설정 (CPU 부족 문제 해결을 위한 증가)
       dexServer = {
         resources = {
           limits = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "300m"
+            memory = "384Mi"
           }
           requests = {
-            cpu    = "25m"
-            memory = "32Mi"
+            cpu    = "150m"
+            memory = "192Mi"
           }
         }
       }
       
-      # ArgoCD Notifications Controller 설정 (개발환경 최적화)
+      # ArgoCD Notifications Controller 설정 (CPU 부족 문제 해결을 위한 증가)
       notificationsController = {
         resources = {
           limits = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "300m"
+            memory = "384Mi"
           }
           requests = {
-            cpu    = "25m"
-            memory = "32Mi"
+            cpu    = "150m"
+            memory = "192Mi"
           }
         }
       }

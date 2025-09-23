@@ -49,9 +49,9 @@ resource "google_container_node_pool" "primary_nodes" {
     auto_upgrade = true
   }
 
-  # 업그레이드 전략 설정 (더 안전한 BLUE_GREEN 전략)
+  # 업그레이드 전략 설정 (SURGE 전략으로 변경 - 더 빠름)
   upgrade_settings {
-    strategy = "BLUE_GREEN"
+    strategy = "SURGE"
   }
 
   depends_on = [google_container_cluster.primary]

@@ -33,15 +33,15 @@ resource "helm_release" "argo_rollouts" {
     yamlencode({
       # Argo Rollouts Controller 설정
       controller = {
-        # 리소스 제한 (개발환경 최적화)
+        # 리소스 제한 (CPU 부족 문제 해결을 위한 증가)
         resources = {
           limits = {
-            cpu    = "100m"
-            memory = "128Mi"
+            cpu    = "500m"
+            memory = "512Mi"
           }
           requests = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "200m"
+            memory = "256Mi"
           }
         }
         
@@ -88,15 +88,15 @@ resource "helm_release" "argo_rollouts" {
           }]
         }
         
-        # 리소스 제한 (개발환경 최적화)
+        # 리소스 제한 (CPU 부족 문제 해결을 위한 증가)
         resources = {
           limits = {
-            cpu    = "50m"
-            memory = "64Mi"
+            cpu    = "200m"
+            memory = "256Mi"
           }
           requests = {
-            cpu    = "25m"
-            memory = "32Mi"
+            cpu    = "100m"
+            memory = "128Mi"
           }
         }
       }
