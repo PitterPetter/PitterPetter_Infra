@@ -163,3 +163,32 @@ output "ingress_nginx_status_command" {
   description = "Nginx Ingress Controller 상태 확인 명령어"
   value       = var.ingress_nginx_enabled ? "kubectl get pods -n ingress-nginx" : null
 }
+
+# =============================================================================
+# SSL/TLS 인증서 출력값
+# =============================================================================
+output "ssl_enabled" {
+  description = "SSL/TLS 인증서 사용 여부"
+  value       = var.ssl_enabled
+}
+
+output "ssl_domain_name" {
+  description = "SSL 인증서가 적용된 도메인 이름"
+  value       = var.ssl_enabled ? var.ssl_domain_name : null
+}
+
+output "ssl_certificate_name" {
+  description = "Google Cloud SSL 인증서 이름"
+  value       = var.ssl_enabled && var.ssl_certificate_name != "" ? data.google_compute_ssl_certificate.existing_cert[0].name : null
+}
+
+output "ssl_certificate_status_command" {
+  description = "SSL 인증서 상태 확인 명령어"
+  value       = var.ssl_enabled && var.ssl_certificate_name != "" ? "gcloud compute ssl-certificates describe ${data.google_compute_ssl_certificate.existing_cert[0].name} --global" : null
+}
+
+
+output "ssl_https_url" {
+  description = "HTTPS 접속 URL"
+  value       = var.ssl_enabled ? "https://${var.ssl_domain_name}" : null
+}

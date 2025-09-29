@@ -19,7 +19,7 @@ variable "gcp_region" {
 variable "gcp_zone" {
   type        = string
   description = "GCP 존"
-  default     = "asia-northeast3-a"
+  default     = "asia-northeast3-b"
 }
 
 variable "environment" {
@@ -124,19 +124,19 @@ variable "node_pool_name" {
 variable "node_count" {
   type        = number
   description = "초기 노드 수 (자동 스케일링으로 변경됨)"
-  default     = 2
+  default     = 4
 }
 
 variable "min_node_count" {
   type        = number
   description = "최소 노드 수 (자동 스케일링)"
-  default     = 1
+  default     = 4
 }
 
 variable "max_node_count" {
   type        = number
   description = "최대 노드 수 (자동 스케일링)"
-  default     = 5
+  default     = 6
 }
 
 variable "node_machine_type" {
@@ -261,4 +261,25 @@ variable "argo_rollouts_chart_version" {
   type        = string
   description = "Argo Rollouts Helm 차트 버전"
   default     = "2.31.1"
+}
+
+# =============================================================================
+# SSL/TLS 인증서 설정 변수 (GCP에서 직접 업로드한 인증서 참조)
+# =============================================================================
+variable "ssl_enabled" {
+  type        = bool
+  description = "SSL/TLS 인증서 사용 여부"
+  default     = true
+}
+
+variable "ssl_domain_name" {
+  type        = string
+  description = "SSL 인증서를 적용할 도메인 이름"
+  default     = "api.loventure.us"
+}
+
+variable "ssl_certificate_name" {
+  type        = string
+  description = "GCP에서 직접 업로드한 SSL 인증서 이름"
+  default     = "pitterpetter-ssl"
 }
