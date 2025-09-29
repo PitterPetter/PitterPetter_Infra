@@ -296,6 +296,32 @@ resource "kubernetes_ingress_v1" "auth_service_ingress" {
             }
           }
         }
+        # Swagger UI 경로
+        path {
+          path      = "/api/auth/swagger-ui"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-auth-service"
+              port {
+                number = 8081
+              }
+            }
+          }
+        }
+        # Swagger API Docs 경로
+        path {
+          path      = "/api/auth/v3/api-docs"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-auth-service"
+              port {
+                number = 8081
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -378,6 +404,32 @@ resource "kubernetes_ingress_v1" "course_service_ingress" {
             }
           }
         }
+        # Swagger UI 경로
+        path {
+          path      = "/api/course/swagger-ui"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-course-service"
+              port {
+                number = 8083
+              }
+            }
+          }
+        }
+        # Swagger API Docs 경로
+        path {
+          path      = "/api/course/v3/api-docs"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-course-service"
+              port {
+                number = 8083
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -450,6 +502,32 @@ resource "kubernetes_ingress_v1" "content_service_ingress" {
         # Content Actuator 경로
         path {
           path      = "/api/diaries/actuator"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-content-service"
+              port {
+                number = 8082
+              }
+            }
+          }
+        }
+        # Swagger UI 경로
+        path {
+          path      = "/api/diaries/swagger-ui"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "loventure-prod-content-service"
+              port {
+                number = 8082
+              }
+            }
+          }
+        }
+        # Swagger API Docs 경로
+        path {
+          path      = "/api/diaries/v3/api-docs"
           path_type = "Prefix"
           backend {
             service {
