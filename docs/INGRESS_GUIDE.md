@@ -9,9 +9,13 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 ### 아키텍처
 ```
 외부 사용자 → LoadBalancer (34.64.212.163) → Nginx Ingress Controller → 도메인별 라우팅
-                                                                    ├── argocd.pitterpetter.com → ArgoCD
-                                                                    ├── workflows.pitterpetter.com → Argo Workflows
-                                                                    └── rollouts.pitterpetter.com → Argo Rollouts
+                                                                    ├── argo.loventure.us → ArgoCD
+                                                                    ├── workflows.loventure.us → Argo Workflows
+                                                                    ├── rollouts.loventure.us → Argo Rollouts
+                                                                    └── api.loventure.us → Microservices
+                                                                        ├── /api/auth/* → Auth Service
+                                                                        ├── /api/course/* → Course Service
+                                                                        └── /api/diaries/* → Content Service
 ```
 
 ## 🔧 현재 설정
@@ -22,11 +26,14 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 - **타입**: External LoadBalancer
 
 ### 배포된 서비스들
-| 서비스 | 도메인 | 네임스페이스 | 포트 |
-|--------|--------|-------------|------|
-| ArgoCD | `argocd.pitterpetter.com` | `argocd` | 80, 443 |
-| Argo Workflows | `workflows.pitterpetter.com` | `argo` | 80, 443 |
-| Argo Rollouts | `rollouts.pitterpetter.com` | `argo-rollouts` | 80, 443 |
+| 서비스 | 도메인 | 네임스페이스 | 포트 | 엔드포인트 |
+|--------|--------|-------------|------|-----------|
+| ArgoCD | `argo.loventure.us` | `argocd` | 80, 443 | GitOps 관리 |
+| Argo Workflows | `workflows.loventure.us` | `argo` | 80, 443 | 워크플로우 오케스트레이션 |
+| Argo Rollouts | `rollouts.loventure.us` | `argo-rollouts` | 80, 443 | 고급 배포 전략 |
+| Auth Service | `api.loventure.us` | `loventure-app` | 8081 | `/api/auth/*` |
+| Course Service | `api.loventure.us` | `loventure-app` | 8083 | `/api/course/*` |
+| Content Service | `api.loventure.us` | `loventure-app` | 8082 | `/api/diaries/*` |
 
 ## 🚀 접속 방법
 
@@ -34,15 +41,20 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 ```bash
 # ArgoCD
 https://34.64.212.163
-# Host 헤더: argocd.pitterpetter.com
+# Host 헤더: argo.loventure.us
 
 # Argo Workflows  
 https://34.64.212.163
-# Host 헤더: workflows.pitterpetter.com
+# Host 헤더: workflows.loventure.us
 
 # Argo Rollouts
 https://34.64.212.163
-# Host 헤더: rollouts.pitterpetter.com
+# Host 헤더: rollouts.loventure.us
+
+# API 서비스들
+https://api.loventure.us/api/auth/health
+https://api.loventure.us/api/course/health
+https://api.loventure.us/api/diaries/health
 ```
 
 **주의사항**: SSL 인증서가 자체 서명되어 있어 브라우저에서 보안 경고가 나타납니다. "고급" → "안전하지 않은 사이트로 이동"을 클릭하여 진행하세요.
@@ -65,13 +77,18 @@ kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:3100
 ### 3. curl로 테스트
 ```bash
 # ArgoCD 테스트
-curl -H "Host: argocd.pitterpetter.com" -k https://34.64.212.163
+curl -H "Host: argo.loventure.us" -k https://34.64.212.163
 
 # Argo Workflows 테스트
-curl -H "Host: workflows.pitterpetter.com" -k https://34.64.212.163
+curl -H "Host: workflows.loventure.us" -k https://34.64.212.163
 
 # Argo Rollouts 테스트
-curl -H "Host: rollouts.pitterpetter.com" -k https://34.64.212.163
+curl -H "Host: rollouts.loventure.us" -k https://34.64.212.163
+
+# API 서비스 테스트
+curl -k https://api.loventure.us/api/auth/health
+curl -k https://api.loventure.us/api/course/health
+curl -k https://api.loventure.us/api/diaries/health
 ```
 
 ## 🔍 상태 확인
@@ -110,6 +127,11 @@ kubectl get svc -n argo
 # Argo Rollouts 상태
 kubectl get pods -n argo-rollouts
 kubectl get svc -n argo-rollouts
+
+# API 서비스 상태
+kubectl get pods -n loventure-app
+kubectl get svc -n loventure-app
+kubectl get ingress -n loventure-app
 ```
 
 ## 🛠️ 관리 명령어
@@ -192,7 +214,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: your-service.pitterpetter.com
+  - host: your-service.loventure.us
     http:
       paths:
       - path: /
@@ -204,7 +226,7 @@ spec:
               number: 80
   tls:
   - hosts:
-    - your-service.pitterpetter.com
+    - your-service.loventure.us
     secretName: your-service-tls
 ```
 
@@ -216,7 +238,7 @@ kubectl apply -f your-ingress.yaml
 ### 3. 확인
 ```bash
 kubectl get ingress -A
-curl -H "Host: your-service.pitterpetter.com" -k https://34.64.212.163
+curl -H "Host: your-service.loventure.us" -k https://34.64.212.163
 ```
 
 ## 🔒 보안 고려사항

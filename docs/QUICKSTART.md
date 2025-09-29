@@ -41,7 +41,7 @@ gcloud services enable container.googleapis.com compute.googleapis.com storage.g
 ### 3단계: 인프라 배포 (1분)
 ```bash
 # 저장소 클론
-git clone <repository-url>
+git clone https://github.com/PitterPetter/PitterPetter_Infra.git
 cd PitterPetter_Infra
 
 # Terraform 초기화 및 배포
@@ -55,7 +55,7 @@ terraform apply -var-file=env/dev.tfvars -auto-approve
 ```bash
 # 클러스터 연결
 gcloud container clusters get-credentials pitterpetter-dev-cluster \
-    --zone asia-northeast3-a --project pitterpetter
+    --zone asia-northeast3-b --project pitterpetter
 
 # 상태 확인
 kubectl get nodes
@@ -66,9 +66,9 @@ kubectl get pods -A
 ### ArgoCD 접속하기
 ```bash
 # 방법 1: 직접 접속 (브라우저에서 보안 경고 무시)
-# URL: https://34.64.212.163
+# URL: https://34.64.212.163 (Host: argo.loventure.us)
 # 사용자명: admin
-# 비밀번호: UIA1qqIsXzKkearS
+# 비밀번호: dev-admin123!
 
 # 방법 2: Port Forward 사용
 kubectl port-forward svc/argocd-server -n argocd 8080:443
@@ -80,8 +80,13 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.pas
 
 ### 다른 서비스 접속하기
 ```bash
-# Argo Workflows: https://34.64.212.163 (Host: workflows.pitterpetter.com)
-# Argo Rollouts: https://34.64.212.163 (Host: rollouts.pitterpetter.com)
+# Argo Workflows: https://34.64.212.163 (Host: workflows.loventure.us)
+# Argo Rollouts: https://34.64.212.163 (Host: rollouts.loventure.us)
+
+# API 서비스들
+# Auth Service: https://api.loventure.us/api/auth/*
+# Course Service: https://api.loventure.us/api/course/*
+# Content Service: https://api.loventure.us/api/diaries/*
 
 # Ingress Controller 상태 확인
 kubectl get svc -n ingress-nginx
@@ -184,7 +189,7 @@ kubectl delete namespace ingress-nginx --force --grace-period=0
 #### 6. "Cluster deletion timeout"
 ```bash
 gcloud container clusters delete pitterpetter-dev-cluster \
-    --zone asia-northeast3-a --project=pitterpetter --quiet
+    --zone asia-northeast3-b --project=pitterpetter --quiet
 terraform state rm google_container_cluster.primary
 ```
 
@@ -202,13 +207,5 @@ terraform state rm google_container_cluster.primary
 ### 보안
 - IP 주소는 `envs/dev.tfvars`에서 `master_authorized_networks`에 추가
 - 운영 환경에서는 관리자 IP만 허용
-
-## 📞 도움이 필요할 때
-
-- **Slack**: #infrastructure 채널
-- **이메일**: devops@pitterpetter.com
-- **문서**: [README.md](./README.md) 참조
-
----
 
 **💡 참고**: 더 자세한 내용은 [README.md](./README.md)를 확인하세요!
