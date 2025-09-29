@@ -19,7 +19,7 @@ variable "gcp_region" {
 variable "gcp_zone" {
   type        = string
   description = "GCP 존"
-  default     = "asia-northeast3-a"
+  default     = "asia-northeast3-b"
 }
 
 variable "environment" {
@@ -281,5 +281,5 @@ variable "ssl_domain_name" {
 variable "ssl_certificate_name" {
   type        = string
   description = "GCP에서 직접 업로드한 SSL 인증서 이름"
-  default     = ""
+  default     = "pitterpetter-ssl"
 }

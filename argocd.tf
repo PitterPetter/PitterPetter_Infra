@@ -66,6 +66,10 @@ resource "helm_release" "argocd" {
           "admin.enabled" = "true"
           "admin.password" = var.argocd_admin_password
           "admin.passwordMtime" = "2024-01-01T00:00:00Z"
+          # Base path 설정 - 모든 정적 리소스가 /argo로 시작하도록
+          "url" = "https://${var.ssl_domain_name}/argo"
+          "server.rootpath" = "/argo"
+          "server.basehref" = "/argo"
         }
         
         # 리소스 제한 (CPU 부족 문제 해결을 위한 증가)
