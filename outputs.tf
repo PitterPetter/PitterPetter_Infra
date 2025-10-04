@@ -142,26 +142,44 @@ output "argo_rollouts_port_forward_command" {
 }
 
 # =============================================================================
-# Ingress Controller 출력값
+# Ingress Controller 출력값 (Gateway로 마이그레이션되므로 주석처리)
 # =============================================================================
-output "ingress_nginx_enabled" {
-  description = "Nginx Ingress Controller 설치 여부"
-  value       = var.ingress_nginx_enabled
+# output "ingress_nginx_enabled" {
+#   description = "Nginx Ingress Controller 설치 여부"
+#   value       = var.ingress_nginx_enabled
+# }
+
+# output "ingress_nginx_namespace" {
+#   description = "Nginx Ingress Controller 네임스페이스"
+#   value       = var.ingress_nginx_enabled ? "ingress-nginx" : null
+# }
+
+# output "ingress_nginx_service_ip" {
+#   description = "Nginx Ingress Controller LoadBalancer IP"
+#   value       = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
+# }
+
+# output "ingress_nginx_status_command" {
+#   description = "Nginx Ingress Controller 상태 확인 명령어"
+#   value       = var.ingress_nginx_enabled ? "kubectl get pods -n ingress-nginx" : null
+# }
+
+# =============================================================================
+# Gateway 고정 IP 출력값 (기존 Ingress IP 재사용, ArgoCD에서 서비스 관리)
+# =============================================================================
+output "gateway_ip_enabled" {
+  description = "Gateway 서비스용 고정 IP 할당 여부"
+  value       = var.gateway_ip_enabled
 }
 
-output "ingress_nginx_namespace" {
-  description = "Nginx Ingress Controller 네임스페이스"
-  value       = var.ingress_nginx_enabled ? "ingress-nginx" : null
+output "gateway_ip_address" {
+  description = "Gateway 서비스용 고정 IP 주소 (기존 Ingress IP 재사용, ArgoCD에서 사용)"
+  value       = var.gateway_ip_enabled ? google_compute_address.ingress_ip[0].address : null
 }
 
-output "ingress_nginx_service_ip" {
-  description = "Nginx Ingress Controller LoadBalancer IP"
-  value       = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
-}
-
-output "ingress_nginx_status_command" {
-  description = "Nginx Ingress Controller 상태 확인 명령어"
-  value       = var.ingress_nginx_enabled ? "kubectl get pods -n ingress-nginx" : null
+output "gateway_ip_name" {
+  description = "Gateway 서비스용 고정 IP 이름 (기존 Ingress IP 재사용, ArgoCD Helm values에서 사용)"
+  value       = var.gateway_ip_enabled ? google_compute_address.ingress_ip[0].name : null
 }
 
 # =============================================================================

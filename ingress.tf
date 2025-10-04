@@ -24,9 +24,10 @@ resource "kubernetes_namespace" "ingress_nginx" {
   }
 }
 
-# 고정 외부 IP 할당 (LoadBalancer용)
+# 고정 외부 IP 할당 (LoadBalancer용) - Gateway에서 재사용
+# 기존 Ingress Controller에서 사용하던 IP (34.22.65.113)를 Gateway에서 재사용
 resource "google_compute_address" "ingress_ip" {
-  count  = var.ingress_nginx_enabled ? 1 : 0
+  count  = var.ingress_nginx_enabled || var.gateway_ip_enabled ? 1 : 0
   name   = "${var.vpc_name}-ingress-ip"
   region = var.gcp_region
 }
@@ -194,222 +195,222 @@ resource "kubernetes_service" "argocd_server_external" {
 # }
 
 # =============================================================================
-# Auth Service 전용 Ingress (api.loventure.us)
+# Auth Service 전용 Ingress - Gateway로 마이그레이션되므로 제거
 # -----------------------------------------------------------------------------
-# Auth Service API 엔드포인트를 위한 전용 Ingress
-resource "kubernetes_ingress_v1" "auth_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+# Auth Service API 엔드포인트를 위한 전용 Ingress (주석처리)
+# resource "kubernetes_ingress_v1" "auth_service_ingress" {
+#   count = var.ingress_nginx_enabled ? 1 : 0
 
-  metadata {
-    name      = "auth-service-ingress"
-    namespace = "loventure-app"
-    annotations = {
-      "nginx.ingress.kubernetes.io/use-regex"      = "true"
-      "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
-      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-      "nginx.ingress.kubernetes.io/proxy-body-size" = "10m"
-      "nginx.ingress.kubernetes.io/proxy-read-timeout" = "300"
-      "nginx.ingress.kubernetes.io/proxy-send-timeout" = "300"
-      "nginx.ingress.kubernetes.io/enable-cors" = "true"
-      "nginx.ingress.kubernetes.io/cors-allow-origin" = "http://localhost:5173, https://api.loventure.us, https://loventure.us, https://argo.loventure.us"
-      "nginx.ingress.kubernetes.io/cors-allow-methods" = "GET, POST, PUT, DELETE, OPTIONS"
-      "nginx.ingress.kubernetes.io/cors-allow-headers" = "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
-      "nginx.ingress.kubernetes.io/cors-allow-credentials" = "true"
-      "nginx.ingress.kubernetes.io/proxy-buffer-size" = "16k"
-      "nginx.ingress.kubernetes.io/proxy-buffers-number" = "8"
-      "nginx.ingress.kubernetes.io/proxy-cookie-path" = "/ /"
-    }
-  }
+#   metadata {
+#     name      = "auth-service-ingress"
+#     namespace = "loventure-app"
+#     annotations = {
+#       "nginx.ingress.kubernetes.io/use-regex"      = "true"
+#       "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
+#       "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
+#       "nginx.ingress.kubernetes.io/proxy-body-size" = "10m"
+#       "nginx.ingress.kubernetes.io/proxy-read-timeout" = "300"
+#       "nginx.ingress.kubernetes.io/proxy-send-timeout" = "300"
+#       "nginx.ingress.kubernetes.io/enable-cors" = "true"
+#       "nginx.ingress.kubernetes.io/cors-allow-origin" = "http://localhost:5173, https://api.loventure.us, https://loventure.us, https://argo.loventure.us"
+#       "nginx.ingress.kubernetes.io/cors-allow-methods" = "GET, POST, PUT, DELETE, OPTIONS"
+#       "nginx.ingress.kubernetes.io/cors-allow-headers" = "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+#       "nginx.ingress.kubernetes.io/cors-allow-credentials" = "true"
+#       "nginx.ingress.kubernetes.io/proxy-buffer-size" = "16k"
+#       "nginx.ingress.kubernetes.io/proxy-buffers-number" = "8"
+#       "nginx.ingress.kubernetes.io/proxy-cookie-path" = "/ /"
+#     }
+#   }
 
-  spec {
-    # Ingress Class 설정
-    ingress_class_name = "nginx"
+#   spec {
+#     # Ingress Class 설정
+#     ingress_class_name = "nginx"
     
-    # SSL/TLS 설정
-    tls {
-      hosts = [var.ssl_domain_name]
-      secret_name = var.ssl_enabled && var.ssl_certificate_name != "" ? data.google_compute_ssl_certificate.existing_cert[0].name : null
-    }
+#     # SSL/TLS 설정
+#     tls {
+#       hosts = [var.ssl_domain_name]
+#       secret_name = var.ssl_enabled && var.ssl_certificate_name != "" ? data.google_compute_ssl_certificate.existing_cert[0].name : null
+#     }
 
-    # Auth Service API 규칙
-    rule {
-      host = var.ssl_domain_name
-      http {
-        # OAuth2 Authorization 엔드포인트들
-        path {
-          path      = "/oauth2"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # OAuth2 로그인 엔드포인트
-        path {
-          path      = "/login/oauth2"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # OAuth2 콜백 엔드포인트
-        path {
-          path      = "/login/oauth2/code"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # OAuth2 로그아웃 엔드포인트
-        path {
-          path      = "/logout"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Auth Service API 경로들
-        path {
-          path      = "/api/auth"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Onboarding API 경로
-        path {
-          path      = "/api/onboarding"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # User Management API 경로
-        path {
-          path      = "/api/users"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Couples Management API 경로
-        path {
-          path      = "/api/couples"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Auth Service Health check 경로 (일관된 경로)
-        path {
-          path      = "/api/auth/health"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Spring Boot Actuator 경로
-        path {
-          path      = "/api/auth/actuator"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Swagger UI 경로
-        path {
-          path      = "/api/auth/swagger-ui"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-        # Swagger API Docs 경로
-        path {
-          path      = "/api/auth/v3/api-docs"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "loventure-prod-auth-service"
-              port {
-                number = 8081
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+#     # Auth Service API 규칙
+#     rule {
+#       host = var.ssl_domain_name
+#       http {
+#         # OAuth2 Authorization 엔드포인트들
+#         path {
+#           path      = "/oauth2"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # OAuth2 로그인 엔드포인트
+#         path {
+#           path      = "/login/oauth2"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # OAuth2 콜백 엔드포인트
+#         path {
+#           path      = "/login/oauth2/code"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # OAuth2 로그아웃 엔드포인트
+#         path {
+#           path      = "/logout"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Auth Service API 경로들
+#         path {
+#           path      = "/api/auth"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Onboarding API 경로
+#         path {
+#           path      = "/api/onboarding"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # User Management API 경로
+#         path {
+#           path      = "/api/users"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Couples Management API 경로
+#         path {
+#           path      = "/api/couples"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Auth Service Health check 경로 (일관된 경로)
+#         path {
+#           path      = "/api/auth/health"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Spring Boot Actuator 경로
+#         path {
+#           path      = "/api/auth/actuator"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Swagger UI 경로
+#         path {
+#           path      = "/api/auth/swagger-ui"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#         # Swagger API Docs 경로
+#         path {
+#           path      = "/api/auth/v3/api-docs"
+#           path_type = "Prefix"
+#           backend {
+#             service {
+#               name = "loventure-prod-auth-service"
+#               port {
+#                 number = 8081
+#               }
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
 
-  depends_on = [
-    helm_release.ingress_nginx
-  ]
-}
+#   depends_on = [
+#     helm_release.ingress_nginx
+#   ]
+# }
 
 # =============================================================================
-# Course Service 전용 Ingress (api.loventure.us)
+# Course Service 전용 Ingress - Gateway로 마이그레이션되므로 제거
 # -----------------------------------------------------------------------------
-# Course Service API 엔드포인트를 위한 전용 Ingress
-resource "kubernetes_ingress_v1" "course_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+# Course Service API 엔드포인트를 위한 전용 Ingress (주석처리)
+# resource "kubernetes_ingress_v1" "course_service_ingress" {
+#   count = var.ingress_nginx_enabled ? 1 : 0
 
-  metadata {
-    name      = "course-service-ingress"
-    namespace = "loventure-app"
+#   metadata {
+#     name      = "course-service-ingress"
+#     namespace = "loventure-app"
     annotations = {
       "nginx.ingress.kubernetes.io/use-regex"      = "true"
       "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
@@ -514,15 +515,15 @@ resource "kubernetes_ingress_v1" "course_service_ingress" {
 }
 
 # =============================================================================
-# Content Service 전용 Ingress (api.loventure.us)
+# Content Service 전용 Ingress - Gateway로 마이그레이션되므로 제거
 # -----------------------------------------------------------------------------
-# Content Service API 엔드포인트를 위한 전용 Ingress
-resource "kubernetes_ingress_v1" "content_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+# Content Service API 엔드포인트를 위한 전용 Ingress (주석처리)
+# resource "kubernetes_ingress_v1" "content_service_ingress" {
+#   count = var.ingress_nginx_enabled ? 1 : 0
 
-  metadata {
-    name      = "content-service-ingress"
-    namespace = "loventure-app"
+#   metadata {
+#     name      = "content-service-ingress"
+#     namespace = "loventure-app"
     annotations = {
       "nginx.ingress.kubernetes.io/use-regex"      = "true"
       "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
@@ -666,10 +667,10 @@ resource "kubernetes_ingress_v1" "content_service_ingress" {
 }
 
 # =============================================================================
-# AI Service 전용 Ingress (api.loventure.us)
+# AI Service 전용 Ingress - Gateway로 마이그레이션되므로 제거
 # -----------------------------------------------------------------------------
-# AI Service (FastAPI) API 엔드포인트를 위한 전용 Ingress
-resource "kubernetes_ingress_v1" "ai_service_ingress" {
+# AI Service (FastAPI) API 엔드포인트를 위한 전용 Ingress (주석처리)
+# resource "kubernetes_ingress_v1" "ai_service_ingress" {
   count = var.ingress_nginx_enabled ? 1 : 0
 
   metadata {
@@ -766,6 +767,12 @@ resource "kubernetes_ingress_v1" "ai_service_ingress" {
     helm_release.ingress_nginx
   ]
 }
+
+# =============================================================================
+# Gateway 서비스 - ArgoCD에서 관리되므로 Terraform에서는 제거
+# -----------------------------------------------------------------------------
+# Gateway 서비스는 ArgoCD에서 Helm 차트로 관리됩니다.
+# 고정 IP만 Terraform에서 할당하고, 서비스는 ArgoCD에서 생성합니다.
 
 # =============================================================================
 # ArgoCD 전용 Ingress (argocd 네임스페이스)
