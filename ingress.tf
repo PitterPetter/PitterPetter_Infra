@@ -821,3 +821,64 @@ resource "kubernetes_ingress_v1" "argocd_ingress" {
   ]
 }
 
+# =============================================================================
+# Kibana 전용 Ingress (monitoring 네임스페이스)
+# -----------------------------------------------------------------------------
+# Kibana 대시보드 접근을 위한 전용 Ingress
+resource "kubernetes_ingress_v1" "kibana_ingress" {
+  count = var.ingress_nginx_enabled ? 1 : 0
+
+  metadata {
+    name      = "kibana-ingress"
+    namespace = "monitoring"
+    annotations = {
+      "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
+      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
+      "nginx.ingress.kubernetes.io/backend-protocol" = "HTTP"
+      "nginx.ingress.kubernetes.io/proxy-body-size" = "10m"
+      "nginx.ingress.kubernetes.io/proxy-read-timeout" = "300"
+      "nginx.ingress.kubernetes.io/proxy-send-timeout" = "300"
+      "nginx.ingress.kubernetes.io/enable-cors" = "true"
+      "nginx.ingress.kubernetes.io/cors-allow-origin" = "https://kibana.loventure.us, https://api.loventure.us, https://loventure.us"
+      "nginx.ingress.kubernetes.io/cors-allow-methods" = "GET, POST, PUT, DELETE, OPTIONS"
+      "nginx.ingress.kubernetes.io/cors-allow-headers" = "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+      "nginx.ingress.kubernetes.io/cors-allow-credentials" = "true"
+    }
+  }
+
+  spec {
+    # Ingress Class 설정
+    ingress_class_name = "nginx"
+    
+    # SSL/TLS 설정
+    tls {
+      hosts = ["kibana.loventure.us"]
+      secret_name = var.ssl_enabled && var.ssl_certificate_name != "" ? data.google_compute_ssl_certificate.existing_cert[0].name : null
+    }
+
+    # Kibana 서버 규칙
+    rule {
+      host = "kibana.loventure.us"
+      http {
+        # 모든 경로 -> Kibana 서비스
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "kibana-kibana"
+              port {
+                number = 5601
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.ingress_nginx
+  ]
+}
+
