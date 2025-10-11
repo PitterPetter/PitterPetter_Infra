@@ -23,12 +23,13 @@ GitOps 기반의 현대적인 CI/CD 파이프라인과 마이크로서비스 아
 │  │              (ingress-nginx)                           │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │       │                                                         │
-│       ├── argocd.loventure.us ──► ArgoCD (GitOps)              │
-│       ├── api.loventure.us ─────► Microservices                │
-│       │   ├── /api/auth ────────► Auth Service                 │
-│       │   ├── /api/course ──────► Course Service               │
-│       │   └── /api/diaries ─────► Content Service              │
-│       └── workflows.loventure.us ► Argo Workflows              │
+│       ├── argocd.pitterpetter.com ──► ArgoCD (GitOps)         │
+│       ├── workflows.pitterpetter.com ► Argo Workflows          │
+│       ├── rollouts.pitterpetter.com ► Argo Rollouts            │
+│       └── api.loventure.us ─────► Microservices                │
+│           ├── /api/auth ────────► Auth Service                 │
+│           ├── /api/course ──────► Course Service               │
+│           └── /api/diaries ─────► Content Service              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -58,8 +59,8 @@ PitterPetter_Infra/
 │
 ├── 🌍 Environment Configs
 │   ├── env/
-│   │   ├── dev.tfvars           # 개발환경 설정 (4노드, e2-standard-2)
-│   │   └── prod.tfvars          # 운영환경 설정 (4노드, e2-standard-2)
+│   │   ├── dev.tfvars           # 개발환경 설정 (4-8노드, e2-standard-2)
+│   │   └── prod.tfvars          # 운영환경 설정 (4-8노드, e2-standard-2)
 │
 ├── 🛠️ Scripts & Tools
 │   └── scripts/
@@ -237,8 +238,28 @@ kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:3100
 - **SSL/TLS**: GCP SSL 인증서 (`pitterpetter-ssl`)
 - **Nginx Ingress Controller**: 트래픽 라우팅 및 SSL 종료
 - **Cloud Logging**: 중앙화된 로그 관리
-- **Cloud Monitoring**: 메트릭 수집 및 알림
+- **Google Managed Prometheus (GMP)**: 완전 관리형 메트릭 수집
+  - **PodMonitoring**: 8개 서비스 메트릭 수집 (애플리케이션 + ELK)
+  - **Alert Rules**: 10개 알림 규칙 (핵심 서비스, 인프라, ELK)
+  - **메트릭 수집 간격**: 30초
+  - **공통 라벨링**: cluster, environment, project, service, type
 - **Firewall Rules**: 네트워크 보안 정책
+
+### 📊 Google Managed Prometheus (GMP) 모니터링
+
+#### 모니터링 구성
+- **PodMonitoring 리소스**: 5개 (애플리케이션 서비스)
+- **대시보드**: Google Cloud Monitoring (5개 위젯)
+- **메트릭 수집**: 30초 간격, HTTP 스키마
+- **대상 서비스**: Gateway, Auth, Content, Course, AI
+
+#### 대시보드 위젯
+- **CPU 사용률**: `kubernetes.io/container/cpu/core_usage_time`
+- **메모리 사용률**: `kubernetes.io/container/memory/used_bytes`
+- **네트워크 트래픽**: 수신/송신 바이트 카운트
+- **Container 재시작**: `kubernetes.io/container/restart_count`
+
+**💡 자세한 설정**: [GMP_MONITORING_GUIDE.md](./docs/GMP_MONITORING_GUIDE.md) 참조
 
 ## 🔧 개발 워크플로우
 
@@ -325,6 +346,38 @@ kubectl get ingress -A
 kubectl get pods -n loventure-app
 kubectl get svc -n loventure-app
 ```
+
+### 📊 Google Managed Prometheus (GMP) 모니터링
+**Cloud Monitoring URL**: `https://console.cloud.google.com/monitoring`
+
+**GMP 상태 확인:**
+```bash
+# GMP Operator 상태
+kubectl get pods -n gmp-system
+
+# PodMonitoring 리소스 확인
+kubectl get podmonitorings -A
+
+# 대시보드 확인
+# Google Cloud Console > Monitoring > Dashboards > "PitterPetter GMP Dashboard"
+
+# ClusterPodMonitoring 확인
+kubectl get clusterpodmonitorings
+```
+
+**메트릭 수집 확인:**
+```bash
+# 특정 서비스 메트릭 확인
+kubectl describe podmonitoring gateway-podmonitoring
+
+# 알림 정책 확인
+kubectl describe rules <rule-name>
+```
+
+**Cloud Monitoring에서 확인할 수 있는 메트릭:**
+- **애플리케이션 메트릭**: CPU, 메모리, 응답 시간, 요청 수
+- **ELK 스택 메트릭**: Elasticsearch 클러스터 상태, 로그 처리량
+- **인프라 메트릭**: 노드 상태, 디스크 사용량, 네트워크 트래픽
 
 ## 🧹 인프라 정리
 

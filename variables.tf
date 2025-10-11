@@ -283,3 +283,118 @@ variable "ssl_certificate_name" {
   description = "GCP에서 직접 업로드한 SSL 인증서 이름"
   default     = "pitterpetter-ssl"
 }
+
+# =============================================================================
+# 게이트웨이 Load Balancer 설정 변수
+# =============================================================================
+variable "gateway_ip_enabled" {
+  type        = bool
+  description = "게이트웨이 서비스 전용 고정 IP 사용 여부"
+  default     = false
+}
+
+# =============================================================================
+# Google Managed Prometheus (GMP) 설정 변수
+# =============================================================================
+variable "gmp_enabled" {
+  type        = bool
+  description = "Google Managed Prometheus 활성화 여부"
+  default     = true
+}
+
+variable "gmp_metrics_interval" {
+  type        = string
+  description = "메트릭 수집 간격"
+  default     = "30s"
+}
+
+variable "gmp_metrics_scheme" {
+  type        = string
+  description = "메트릭 수집 스키마"
+  default     = "http"
+}
+
+variable "gmp_common_labels" {
+  type = map(string)
+  description = "공통 라벨링 설정"
+  default = {
+    cluster     = "pitterpetter-dev-cluster"
+    environment = "dev"
+    project     = "pitterpetter"
+  }
+}
+
+# 애플리케이션 서비스 설정
+variable "app_services" {
+  type = map(object({
+    port     = number
+    path     = string
+    interval = optional(string, "30s")
+    prometheus_enabled = optional(bool, false)  # Prometheus 메트릭 활성화 여부
+  }))
+  description = "애플리케이션 서비스 메트릭 수집 설정"
+  default = {
+    gateway = {
+      port     = 8080
+      path     = "/actuator/health"  # 기본 헬스체크 엔드포인트
+      interval = "30s"
+      prometheus_enabled = false  # Prometheus 비활성화
+    }
+    auth = {
+      port     = 8081
+      path     = "/actuator/health"  # 기본 헬스체크 엔드포인트
+      interval = "30s"
+      prometheus_enabled = false  # Prometheus 비활성화
+    }
+    content = {
+      port     = 8082
+      path     = "/actuator/health"  # 기본 헬스체크 엔드포인트
+      interval = "30s"
+      prometheus_enabled = false  # Prometheus 비활성화
+    }
+    course = {
+      port     = 8083
+      path     = "/actuator/health"  # 기본 헬스체크 엔드포인트
+      interval = "30s"
+      prometheus_enabled = false  # Prometheus 비활성화
+    }
+    ai = {
+      port     = 8000
+      path     = "/health"  # AI 서비스는 다른 엔드포인트
+      interval = "30s"
+      prometheus_enabled = false  # Prometheus 비활성화
+    }
+  }
+}
+
+# ELK 스택 서비스 설정
+variable "elk_services" {
+  type = map(object({
+    port     = number
+    path     = string
+    interval = optional(string, "30s")
+  }))
+  description = "ELK 스택 서비스 메트릭 수집 설정"
+  default = {
+    elasticsearch = {
+      port     = 9200
+      path     = "/_prometheus/metrics"
+      interval = "30s"
+    }
+    kibana = {
+      port     = 5601
+      path     = "/api/status"
+      interval = "30s"
+    }
+    logstash = {
+      port     = 9600
+      path     = "/_node/stats"
+      interval = "30s"
+    }
+    filebeat = {
+      port     = 5066
+      path     = "/stats"
+      interval = "30s"
+    }
+  }
+}
