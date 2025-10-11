@@ -9,9 +9,9 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 ### 아키텍처
 ```
 외부 사용자 → LoadBalancer (34.64.212.163) → Nginx Ingress Controller → 도메인별 라우팅
-                                                                    ├── argo.loventure.us → ArgoCD
-                                                                    ├── workflows.loventure.us → Argo Workflows
-                                                                    ├── rollouts.loventure.us → Argo Rollouts
+                                                                    ├── argocd.pitterpetter.com → ArgoCD
+                                                                    ├── workflows.pitterpetter.com → Argo Workflows
+                                                                    ├── rollouts.pitterpetter.com → Argo Rollouts
                                                                     └── api.loventure.us → Microservices
                                                                         ├── /api/auth/* → Auth Service
                                                                         ├── /api/course/* → Course Service
@@ -28,9 +28,9 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 ### 배포된 서비스들
 | 서비스 | 도메인 | 네임스페이스 | 포트 | 엔드포인트 |
 |--------|--------|-------------|------|-----------|
-| ArgoCD | `argo.loventure.us` | `argocd` | 80, 443 | GitOps 관리 |
-| Argo Workflows | `workflows.loventure.us` | `argo` | 80, 443 | 워크플로우 오케스트레이션 |
-| Argo Rollouts | `rollouts.loventure.us` | `argo-rollouts` | 80, 443 | 고급 배포 전략 |
+| ArgoCD | `argocd.pitterpetter.com` | `argocd` | 80, 443 | GitOps 관리 |
+| Argo Workflows | `workflows.pitterpetter.com` | `argo` | 80, 443 | 워크플로우 오케스트레이션 |
+| Argo Rollouts | `rollouts.pitterpetter.com` | `argo-rollouts` | 80, 443 | 고급 배포 전략 |
 | Auth Service | `api.loventure.us` | `loventure-app` | 8081 | `/api/auth/*` |
 | Course Service | `api.loventure.us` | `loventure-app` | 8083 | `/api/course/*` |
 | Content Service | `api.loventure.us` | `loventure-app` | 8082 | `/api/diaries/*` |
@@ -40,16 +40,13 @@ PitterPetter 인프라에서 사용하는 Nginx Ingress Controller에 대한 상
 ### 1. 브라우저 접속 (권장)
 ```bash
 # ArgoCD
-https://34.64.212.163
-# Host 헤더: argo.loventure.us
+https://argocd.pitterpetter.com
 
 # Argo Workflows  
-https://34.64.212.163
-# Host 헤더: workflows.loventure.us
+https://workflows.pitterpetter.com
 
 # Argo Rollouts
-https://34.64.212.163
-# Host 헤더: rollouts.loventure.us
+https://rollouts.pitterpetter.com
 
 # API 서비스들
 https://api.loventure.us/api/auth/health

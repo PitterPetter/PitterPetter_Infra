@@ -192,3 +192,57 @@ output "ssl_https_url" {
   description = "HTTPS 접속 URL"
   value       = var.ssl_enabled ? "https://${var.ssl_domain_name}" : null
 }
+
+# =============================================================================
+# Google Managed Prometheus (GMP) 출력값
+# =============================================================================
+output "gmp_enabled" {
+  description = "Google Managed Prometheus 활성화 여부"
+  value       = var.gmp_enabled
+}
+
+output "gmp_metrics_interval" {
+  description = "메트릭 수집 간격"
+  value       = var.gmp_enabled ? var.gmp_metrics_interval : null
+}
+
+output "gmp_common_labels" {
+  description = "공통 라벨링 설정"
+  value       = var.gmp_enabled ? var.gmp_common_labels : null
+}
+
+output "gmp_app_services" {
+  description = "애플리케이션 서비스 메트릭 수집 설정"
+  value       = var.gmp_enabled ? var.app_services : null
+}
+
+output "gmp_elk_services" {
+  description = "ELK 스택 서비스 메트릭 수집 설정"
+  value       = var.gmp_enabled ? var.elk_services : null
+}
+
+output "gmp_podmonitoring_count" {
+  description = "생성된 PodMonitoring 리소스 수"
+  value       = var.gmp_enabled ? 5 : 0
+}
+
+
+output "gmp_status_command" {
+  description = "GMP 상태 확인 명령어"
+  value       = var.gmp_enabled ? "kubectl get pods -n gmp-system" : null 
+}
+
+output "gmp_podmonitoring_list_command" {
+  description = "PodMonitoring 리소스 목록 확인 명령어"
+  value       = var.gmp_enabled ? "kubectl get podmonitorings -A" : null
+}
+
+output "gmp_rules_list_command" {
+  description = "Rules 리소스 목록 확인 명령어"
+  value       = var.gmp_enabled ? "kubectl get rules -A" : null
+}
+
+output "gmp_cloud_monitoring_url" {
+  description = "Google Cloud Monitoring URL"
+  value       = var.gmp_enabled ? "https://console.cloud.google.com/monitoring" : null
+}

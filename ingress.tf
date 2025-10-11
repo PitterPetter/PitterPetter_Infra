@@ -198,7 +198,7 @@ resource "kubernetes_service" "argocd_server_external" {
 # -----------------------------------------------------------------------------
 # Auth Service API 엔드포인트를 위한 전용 Ingress
 resource "kubernetes_ingress_v1" "auth_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+  count = 0  # 비활성화 - 이미 존재하는 Ingress 사용
 
   metadata {
     name      = "auth-service-ingress"
@@ -405,7 +405,7 @@ resource "kubernetes_ingress_v1" "auth_service_ingress" {
 # -----------------------------------------------------------------------------
 # Course Service API 엔드포인트를 위한 전용 Ingress
 resource "kubernetes_ingress_v1" "course_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+  count = 0  # 비활성화 - 이미 존재하는 Ingress 사용
 
   metadata {
     name      = "course-service-ingress"
@@ -518,7 +518,7 @@ resource "kubernetes_ingress_v1" "course_service_ingress" {
 # -----------------------------------------------------------------------------
 # Content Service API 엔드포인트를 위한 전용 Ingress
 resource "kubernetes_ingress_v1" "content_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+  count = 0  # 비활성화 - 이미 존재하는 Ingress 사용
 
   metadata {
     name      = "content-service-ingress"
@@ -670,7 +670,7 @@ resource "kubernetes_ingress_v1" "content_service_ingress" {
 # -----------------------------------------------------------------------------
 # AI Service (FastAPI) API 엔드포인트를 위한 전용 Ingress
 resource "kubernetes_ingress_v1" "ai_service_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+  count = 0  # 비활성화 - 이미 존재하는 Ingress 사용
 
   metadata {
     name      = "ai-service-ingress"

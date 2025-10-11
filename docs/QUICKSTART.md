@@ -66,7 +66,7 @@ kubectl get pods -A
 ### ArgoCD 접속하기
 ```bash
 # 방법 1: 직접 접속 (브라우저에서 보안 경고 무시)
-# URL: https://34.64.212.163 (Host: argo.loventure.us)
+# URL: https://argocd.pitterpetter.com
 # 사용자명: admin
 # 비밀번호: dev-admin123!
 
@@ -80,8 +80,8 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.pas
 
 ### 다른 서비스 접속하기
 ```bash
-# Argo Workflows: https://34.64.212.163 (Host: workflows.loventure.us)
-# Argo Rollouts: https://34.64.212.163 (Host: rollouts.loventure.us)
+# Argo Workflows: https://workflows.pitterpetter.com
+# Argo Rollouts: https://rollouts.pitterpetter.com
 
 # API 서비스들
 # Auth Service: https://api.loventure.us/api/auth/*
@@ -208,4 +208,15 @@ terraform state rm google_container_cluster.primary
 - IP 주소는 `envs/dev.tfvars`에서 `master_authorized_networks`에 추가
 - 운영 환경에서는 관리자 IP만 허용
 
-**💡 참고**: 더 자세한 내용은 [README.md](./README.md)를 확인하세요!
+## 📊 모니터링 확인
+
+### 대시보드 접근
+```bash
+# Google Cloud Console > Monitoring > Dashboards > "PitterPetter GMP Dashboard"
+echo "https://console.cloud.google.com/monitoring"
+
+# GMP 상태 확인
+kubectl get pods -n gmp-system
+```
+
+**💡 참고**: 자세한 모니터링 설정은 [GMP_MONITORING_GUIDE.md](./GMP_MONITORING_GUIDE.md)를 확인하세요!
