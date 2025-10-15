@@ -97,7 +97,8 @@ resource "google_compute_firewall" "allow_debezium_to_kafka" {
     ports    = ["9092"]
   }
 
-  target_tags = ["kafka"]
+  source_ranges = ["10.0.0.0/24"]
+  target_tags   = ["kafka"]
 }
 
 # 방화벽 규칙 - Debezium → PostgreSQL 통신 허용

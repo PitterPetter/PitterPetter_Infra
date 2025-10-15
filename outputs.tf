@@ -54,13 +54,55 @@ output "node_count" {
 # kubectl 설정 명령어
 output "kubectl_config_command" {
   description = "kubectl 설정을 위한 명령어"
-  value       = "gcloud container clusters get-credentials ${google_container_cluster.primary.name} --region ${google_container_cluster.primary.location} --project pitterpetter"
+  value       = "gcloud container clusters get-credentials ${google_container_cluster.primary.name} --region ${google_container_cluster.primary.location} --project ${var.gcp_project_id}"
 }
 
 # 서비스 계정 정보
 output "gke_node_service_account" {
   description = "GKE 노드 서비스 계정 이메일"
   value       = google_service_account.gke_node.email
+}
+
+# 환경 정보
+output "environment" {
+  description = "현재 환경"
+  value       = var.environment
+}
+
+output "gcp_project_id" {
+  description = "GCP 프로젝트 ID"
+  value       = var.gcp_project_id
+}
+
+output "gcp_region" {
+  description = "GCP 리전"
+  value       = var.gcp_region
+}
+
+# 클러스터 상세 정보
+output "cluster_version" {
+  description = "GKE 클러스터 버전"
+  value       = google_container_cluster.primary.master_version
+}
+
+output "cluster_node_count" {
+  description = "현재 노드 수"
+  value       = google_container_node_pool.primary_nodes.node_count
+}
+
+output "cluster_min_node_count" {
+  description = "최소 노드 수"
+  value       = google_container_node_pool.primary_nodes.autoscaling[0].min_node_count
+}
+
+output "cluster_max_node_count" {
+  description = "최대 노드 수"
+  value       = google_container_node_pool.primary_nodes.autoscaling[0].max_node_count
+}
+
+output "cluster_machine_type" {
+  description = "노드 머신 타입"
+  value       = google_container_node_pool.primary_nodes.node_config[0].machine_type
 }
 
 # =============================================================================
@@ -84,7 +126,7 @@ output "argocd_admin_password" {
 
 output "argocd_url" {
   description = "ArgoCD 웹 UI URL"
-  value       = var.argocd_enabled ? "https://argocd.${var.gcp_project_id}.com" : null
+  value       = var.argocd_enabled ? "https://argocd.${var.ssl_domain_name}" : null
 }
 
 # =============================================================================
@@ -102,7 +144,7 @@ output "argoworkflows_namespace" {
 
 output "argoworkflows_url" {
   description = "Argo Workflows 웹 UI URL"
-  value       = var.argoworkflows_enabled ? "https://workflows.${var.gcp_project_id}.com" : null
+  value       = var.argoworkflows_enabled ? "https://workflows.${var.ssl_domain_name}" : null
 }
 
 # =============================================================================
@@ -133,7 +175,7 @@ output "argo_rollouts_namespace" {
 
 output "argo_rollouts_dashboard_url" {
   description = "Argo Rollouts 대시보드 URL"
-  value       = var.argo_rollouts_enabled ? "https://rollouts.${var.gcp_project_id}.com" : null
+  value       = var.argo_rollouts_enabled ? "https://rollouts.${var.ssl_domain_name}" : null
 }
 
 output "argo_rollouts_port_forward_command" {
@@ -154,8 +196,13 @@ output "ingress_nginx_namespace" {
   value       = var.ingress_nginx_enabled ? "ingress-nginx" : null
 }
 
-output "ingress_nginx_service_ip" {
-  description = "Nginx Ingress Controller LoadBalancer IP"
+output "ingress_nginx_service_ip_command" {
+  description = "Nginx Ingress Controller LoadBalancer IP 확인 명령어"
+  value       = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
+}
+
+output "ingress_nginx_external_ip" {
+  description = "Nginx Ingress Controller 외부 IP"
   value       = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
 }
 
@@ -201,10 +248,6 @@ output "gmp_enabled" {
   value       = var.gmp_enabled
 }
 
-output "gmp_metrics_interval" {
-  description = "메트릭 수집 간격"
-  value       = var.gmp_enabled ? var.gmp_metrics_interval : null
-}
 
 output "gmp_common_labels" {
   description = "공통 라벨링 설정"
@@ -277,4 +320,42 @@ output "swagger_domains" {
 output "swagger_ingress_status_command" {
   description = "Swagger Ingress 상태 확인 명령어"
   value       = var.ingress_nginx_enabled ? "kubectl get ingress -n loventure-app | grep swagger" : null
+}
+
+# =============================================================================
+# 전체 인프라 요약
+# =============================================================================
+output "infrastructure_summary" {
+  description = "전체 인프라 요약 정보"
+  value = {
+    environment = var.environment
+    project_id = var.gcp_project_id
+    region = var.gcp_region
+    cluster_name = google_container_cluster.primary.name
+    cluster_version = google_container_cluster.primary.master_version
+    node_count = google_container_node_pool.primary_nodes.node_count
+    machine_type = google_container_node_pool.primary_nodes.node_config[0].machine_type
+    vpc_name = google_compute_network.vpc.name
+    subnet_name = google_compute_subnetwork.subnet.name
+    argocd_enabled = var.argocd_enabled
+    argoworkflows_enabled = var.argoworkflows_enabled
+    argo_rollouts_enabled = var.argo_rollouts_enabled
+    ingress_nginx_enabled = var.ingress_nginx_enabled
+    ssl_enabled = var.ssl_enabled
+    ssl_domain = var.ssl_domain_name
+    gmp_enabled = var.gmp_enabled
+  }
+}
+
+output "quick_access_commands" {
+  description = "빠른 접근을 위한 주요 명령어들"
+  value = {
+    kubectl_config = "gcloud container clusters get-credentials ${google_container_cluster.primary.name} --region ${google_container_cluster.primary.location} --project ${var.gcp_project_id}"
+    argocd_port_forward = var.argocd_enabled ? "kubectl port-forward svc/argocd-server -n ${var.argocd_namespace} 8080:443" : null
+    argoworkflows_port_forward = var.argoworkflows_enabled ? "kubectl port-forward svc/argo-workflows-server -n ${var.argoworkflows_namespace} 2746:2746" : null
+    argo_rollouts_port_forward = var.argo_rollouts_enabled ? "kubectl port-forward svc/argo-rollouts-dashboard -n ${var.argo_rollouts_namespace} 3100:3100" : null
+    ingress_ip = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
+    cluster_status = "kubectl get nodes"
+    pod_status = "kubectl get pods -A"
+  }
 }
