@@ -246,3 +246,35 @@ output "gmp_cloud_monitoring_url" {
   description = "Google Cloud Monitoring URL"
   value       = var.gmp_enabled ? "https://console.cloud.google.com/monitoring" : null
 }
+
+# =============================================================================
+# Swagger UI 출력값
+# =============================================================================
+output "swagger_auth_url" {
+  description = "Auth Service Swagger UI URL"
+  value       = var.ingress_nginx_enabled ? "https://swagger-auth.loventure.us" : null
+}
+
+output "swagger_diaries_url" {
+  description = "Content Service (Diaries) Swagger UI URL"
+  value       = var.ingress_nginx_enabled ? "https://swagger-diaries.loventure.us" : null
+}
+
+output "swagger_courses_url" {
+  description = "Course Service Swagger UI URL"
+  value       = var.ingress_nginx_enabled ? "https://swagger-courses.loventure.us" : null
+}
+
+output "swagger_domains" {
+  description = "모든 Swagger UI 도메인 목록"
+  value = var.ingress_nginx_enabled ? [
+    "https://swagger-auth.loventure.us",
+    "https://swagger-diaries.loventure.us", 
+    "https://swagger-courses.loventure.us"
+  ] : []
+}
+
+output "swagger_ingress_status_command" {
+  description = "Swagger Ingress 상태 확인 명령어"
+  value       = var.ingress_nginx_enabled ? "kubectl get ingress -n loventure-app | grep swagger" : null
+}
