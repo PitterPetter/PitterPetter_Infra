@@ -32,141 +32,20 @@ resource "helm_release" "argocd" {
   version    = var.argocd_chart_version
   namespace  = var.argocd_namespace
 
-  # ArgoCD values 설정
   values = [
     yamlencode({
-      global = {
-        domain = "argocd.${var.gcp_project_id}.com"
-      }
-      
       server = {
-        # ArgoCD 서버 설정 (Ingress Controller 사용)
+        # 개발환경용 insecure 설정
+        extraArgs = ["--insecure"]
+        
+        # 기본 서비스 설정
         service = {
           type = "ClusterIP"
         }
         
-        # Ingress 설정 (Private Cluster용)
+        # Ingress 비활성화 (manifest에서 관리)
         ingress = {
-          enabled = true
-          className = "nginx"
-          annotations = {
-            "kubernetes.io/ingress.class" = "nginx"
-            "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-            "nginx.ingress.kubernetes.io/backend-protocol" = "HTTPS"
-          }
-          hosts = ["argocd.${var.gcp_project_id}.com"]
-          tls = [{
-            secretName = "argocd-server-tls"
-            hosts = ["argocd.${var.gcp_project_id}.com"]
-          }]
-        }
-        
-        # 보안 설정
-        config = {
-          "admin.enabled" = "true"
-          "admin.password" = var.argocd_admin_password
-          "admin.passwordMtime" = "2024-01-01T00:00:00Z"
-          # Base path 설정 - 모든 정적 리소스가 /argo로 시작하도록
-          "url" = "https://${var.ssl_domain_name}/argo"
-          "server.rootpath" = "/argo"
-          "server.basehref" = "/argo"
-        }
-        
-        # 리소스 제한 (CPU 부족 문제 해결을 위한 증가)
-        resources = {
-          limits = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-          requests = {
-            cpu    = "200m"
-            memory = "256Mi"
-          }
-        }
-      }
-      
-      # ArgoCD Controller 설정 (CPU 부족 문제 해결을 위한 증가)
-      controller = {
-        resources = {
-          limits = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-          requests = {
-            cpu    = "200m"
-            memory = "256Mi"
-          }
-        }
-      }
-      
-      # ArgoCD Repo Server 설정 (CPU 부족 문제 해결을 위한 증가)
-      repoServer = {
-        resources = {
-          limits = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-          requests = {
-            cpu    = "200m"
-            memory = "256Mi"
-          }
-        }
-      }
-      
-      # ArgoCD ApplicationSet Controller 설정 (CPU 부족 문제 해결을 위한 증가)
-      applicationSet = {
-        enabled = true
-        resources = {
-          limits = {
-            cpu    = "300m"
-            memory = "384Mi"
-          }
-          requests = {
-            cpu    = "150m"
-            memory = "192Mi"
-          }
-        }
-      }
-      
-      # ArgoCD Redis 설정 (CPU 부족 문제 해결을 위한 증가)
-      redis = {
-        resources = {
-          limits = {
-            cpu    = "300m"
-            memory = "384Mi"
-          }
-          requests = {
-            cpu    = "150m"
-            memory = "192Mi"
-          }
-        }
-      }
-      
-      # ArgoCD Dex Server 설정 (CPU 부족 문제 해결을 위한 증가)
-      dexServer = {
-        resources = {
-          limits = {
-            cpu    = "300m"
-            memory = "384Mi"
-          }
-          requests = {
-            cpu    = "150m"
-            memory = "192Mi"
-          }
-        }
-      }
-      
-      # ArgoCD Notifications Controller 설정 (CPU 부족 문제 해결을 위한 증가)
-      notificationsController = {
-        resources = {
-          limits = {
-            cpu    = "300m"
-            memory = "384Mi"
-          }
-          requests = {
-            cpu    = "150m"
-            memory = "192Mi"
-          }
+          enabled = false
         }
       }
     })
@@ -178,5 +57,46 @@ resource "helm_release" "argocd" {
     google_container_node_pool.primary_nodes,
     time_sleep.wait_for_nodes,
     helm_release.ingress_nginx
+  ]
+}
+
+# ArgoCD Application - manifest 리포지토리 자동 관리
+resource "kubernetes_manifest" "argocd_application" {
+  count = var.argocd_enabled ? 1 : 0
+
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "argocd"
+      namespace = var.argocd_namespace
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = var.argocd_manifest_repo
+        targetRevision = var.argocd_manifest_branch
+        path           = var.argocd_manifest_path
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = var.argocd_namespace
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = [
+          "CreateNamespace=true",
+          "PrunePropagationPolicy=foreground",
+          "PruneLast=true"
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd
   ]
 }

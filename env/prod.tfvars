@@ -47,7 +47,7 @@ bucket_location = "asia-northeast3"
 # SSL/TLS 설정
 ssl_enabled = true
 ssl_domain_name = "loventure.us"
-ssl_certificate_name = "pitterpetter-ssl-prod"
+ssl_certificate_name = "pitterpetter-ssl"
 
 # Ingress 설정
 ingress_nginx_enabled = true
@@ -66,6 +66,11 @@ argocd_enabled = true
 argocd_namespace = "argocd"
 argocd_chart_version = "5.51.6"
 argocd_admin_password = "admin123!"
+
+# ArgoCD Manifest 설정 (운영환경)
+argocd_manifest_repo = "https://github.com/PitterPetter/PitterPatter-Manifest.git"
+argocd_manifest_path = "charts/argo-cd"
+argocd_manifest_branch = "feature/PIT-587"  # 운영환경은 main 브랜치 사용
 
 # Argo Workflows 설정
 argoworkflows_enabled = true

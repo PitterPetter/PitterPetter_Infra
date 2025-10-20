@@ -126,7 +126,7 @@ output "argocd_admin_password" {
 
 output "argocd_url" {
   description = "ArgoCD 웹 UI URL"
-  value       = var.argocd_enabled ? "https://argocd.${var.ssl_domain_name}" : null
+  value       = var.argocd_enabled ? "https://argo.loventure.us" : null
 }
 
 # =============================================================================
@@ -150,9 +150,9 @@ output "argoworkflows_url" {
 # =============================================================================
 # 접속 명령어
 # =============================================================================
-output "argocd_port_forward_command" {
-  description = "ArgoCD 로컬 포트 포워딩 명령어"
-  value       = var.argocd_enabled ? "kubectl port-forward svc/argocd-server -n ${var.argocd_namespace} 8080:443" : null
+output "argocd_password_command" {
+  description = "ArgoCD 관리자 비밀번호 확인 명령어"
+  value       = var.argocd_enabled ? "kubectl -n ${var.argocd_namespace} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d" : null
 }
 
 output "argoworkflows_port_forward_command" {
@@ -351,7 +351,9 @@ output "quick_access_commands" {
   description = "빠른 접근을 위한 주요 명령어들"
   value = {
     kubectl_config = "gcloud container clusters get-credentials ${google_container_cluster.primary.name} --region ${google_container_cluster.primary.location} --project ${var.gcp_project_id}"
-    argocd_port_forward = var.argocd_enabled ? "kubectl port-forward svc/argocd-server -n ${var.argocd_namespace} 8080:443" : null
+    argocd_port_forward = var.argocd_enabled ? "kubectl port-forward svc/argocd-server -n ${var.argocd_namespace} 8080:80" : null
+    argocd_password = var.argocd_enabled ? "kubectl -n ${var.argocd_namespace} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d" : null
+    argocd_url = var.argocd_enabled ? "https://argo.loventure.us" : null
     argoworkflows_port_forward = var.argoworkflows_enabled ? "kubectl port-forward svc/argo-workflows-server -n ${var.argoworkflows_namespace} 2746:2746" : null
     argo_rollouts_port_forward = var.argo_rollouts_enabled ? "kubectl port-forward svc/argo-rollouts-dashboard -n ${var.argo_rollouts_namespace} 3100:3100" : null
     ingress_ip = var.ingress_nginx_enabled ? "kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null

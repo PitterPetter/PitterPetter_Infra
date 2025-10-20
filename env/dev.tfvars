@@ -67,6 +67,11 @@ argocd_namespace = "argocd"
 argocd_chart_version = "5.51.6"
 argocd_admin_password = "admin123!"
 
+# ArgoCD Manifest 설정 (개발환경)
+argocd_manifest_repo = "https://github.com/PitterPetter/PitterPatter-Manifest.git"
+argocd_manifest_path = "charts/argo-cd"
+argocd_manifest_branch = "main"  # 개발환경은 develop 브랜치 사용
+
 # Argo Workflows 설정
 argoworkflows_enabled = true
 argoworkflows_namespace = "argo"
@@ -81,4 +86,4 @@ argo_rollouts_chart_version = "2.31.1"
 ingress_nginx_chart_version = "4.8.3"
 
 # 게이트웨이 설정
-gateway_ip_enabled = false
+gateway_ip_enabled = true

@@ -158,6 +158,22 @@ variable "argocd_admin_password" {
   sensitive   = true
 }
 
+# ArgoCD Manifest 관련 변수들
+variable "argocd_manifest_repo" {
+  type        = string
+  description = "ArgoCD가 관리할 manifest 리포지토리 URL"
+}
+
+variable "argocd_manifest_path" {
+  type        = string
+  description = "ArgoCD가 관리할 manifest 경로"
+}
+
+variable "argocd_manifest_branch" {
+  type        = string
+  description = "ArgoCD가 관리할 manifest 브랜치 (환경별로 다름)"
+}
+
 variable "argoworkflows_enabled" {
   type        = bool
   description = "Argo Workflows 설치 여부"
@@ -216,6 +232,7 @@ variable "ssl_certificate_name" {
 variable "gateway_ip_enabled" {
   type        = bool
   description = "게이트웨이 서비스 전용 고정 IP 사용 여부"
+  default     = true
 }
 
 variable "gmp_enabled" {
