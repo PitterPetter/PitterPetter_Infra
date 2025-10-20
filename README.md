@@ -45,6 +45,7 @@ PitterPetter_Infra/
 │
 ├── 🌐 Ingress & SSL
 │   ├── ingress.tf                # Nginx Ingress Controller + API 라우팅
+│   ├── swagger_ingress.tf        # Swagger UI Ingress 설정
 │   └── ssl_files/                # SSL 인증서 파일들
 │
 ├── 🚀 GitOps & CI/CD
@@ -52,9 +53,13 @@ PitterPetter_Infra/
 │   ├── workflows.tf              # Argo Workflows (워크플로우 오케스트레이션)
 │   └── rollouts.tf               # Argo Rollouts (고급 배포 전략)
 │
+├── 📊 Monitoring & Observability
+│   ├── gmp.tf                    # Google Managed Prometheus 설정
+│   └── gmp_dashboard.tf          # GMP 대시보드 구성
+│
 ├── ⚙️ Configuration
-│   ├── variables.tf              # 모든 변수 정의
-│   ├── outputs.tf                # 출력값 정의
+│   ├── variables.tf              # 모든 변수 정의 (정리됨)
+│   ├── outputs.tf                # 출력값 정의 (향상됨)
 │   └── backend.tf                # Terraform State 백엔드 설정
 │
 ├── 🌍 Environment Configs
@@ -69,7 +74,8 @@ PitterPetter_Infra/
 ├── 📚 Documentation
 │   ├── docs/
 │   │   ├── QUICKSTART.md        # 5분 빠른 시작 가이드
-│   │   └── INGRESS_GUIDE.md     # Ingress Controller 상세 가이드
+│   │   ├── INGRESS_GUIDE.md     # Ingress Controller 상세 가이드
+│   │   └── GMP_MONITORING_GUIDE.md # GMP 모니터링 가이드
 │   └── README.md               # 이 파일
 ```
 
@@ -156,7 +162,20 @@ terraform plan -var-file="env/prod.tfvars"
 terraform apply -var-file="env/prod.tfvars"
 ```
 
-### 3. 클러스터 연결
+### 3. 인프라 상태 확인
+```bash
+# 전체 인프라 요약 정보
+terraform output infrastructure_summary
+
+# 빠른 접근 명령어들
+terraform output quick_access_commands
+
+# 특정 서비스 정보
+terraform output argocd_url
+terraform output ssl_domain_name
+```
+
+### 4. 클러스터 연결
 ```bash
 # GKE 클러스터 인증 정보 가져오기
 gcloud container clusters get-credentials pitterpetter-dev-cluster \
@@ -168,7 +187,7 @@ kubectl get nodes
 kubectl get namespaces
 ```
 
-### 4. 서비스 접속
+### 5. 서비스 접속
 
 #### ArgoCD 접속
 ```bash
@@ -274,12 +293,15 @@ terraform apply -var-file="env/dev.tfvars"
 # 3. 상태 확인
 terraform show
 terraform output
+
+# 4. 인프라 요약 확인
+terraform output infrastructure_summary
 ```
 
 ### 새로운 환경 변수 추가
-1. `variables.tf`에 변수 정의
-2. `env/dev.tfvars`에 값 설정
-3. `env/prod.tfvars`에 값 설정
+1. `variables.tf`에 변수 정의 (기본값 제거 권장)
+2. `env/dev.tfvars`에 개발환경 값 설정
+3. `env/prod.tfvars`에 운영환경 값 설정
 4. 코드에서 변수 사용
 
 ### 새로운 리소스 추가
@@ -287,6 +309,27 @@ terraform output
 2. `outputs.tf`에 필요한 출력값 추가
 3. `terraform plan`으로 계획 확인
 4. `terraform apply`로 적용
+
+## 🆕 최근 업데이트 (v2.1)
+
+### ✨ 주요 개선사항
+- **환경별 설정 분리**: `env/` 디렉토리로 환경별 변수 관리
+- **변수 정리**: 사용되지 않는 변수 제거 및 최적화
+- **Output 향상**: 인프라 요약 정보 및 빠른 접근 명령어 추가
+- **모니터링 강화**: GMP 대시보드 및 상세 모니터링 설정
+- **Swagger UI**: API 문서화를 위한 Swagger UI Ingress 추가
+- **인프라 안정성**: GKE 클러스터 및 네트워킹 구성 최적화
+- **보안 강화**: 방화벽 규칙 및 SSL 인증서 관리 개선
+
+### 🔧 설정 변경사항
+- `variables.tf`: 불필요한 변수 제거, 코드 정리
+- `outputs.tf`: `infrastructure_summary`, `quick_access_commands` 추가
+- `env/`: 환경별 설정 파일 분리 (dev.tfvars, prod.tfvars)
+- `gmp_dashboard.tf`: 모니터링 대시보드 추가
+- `gke.tf`: GKE 클러스터 설정 최적화
+- `ingress.tf`: Ingress Controller 및 라우팅 규칙 개선
+- `networking.tf`: 네트워크 보안 정책 강화
+- `argocd.tf`: ArgoCD 배포 설정 개선
 
 ## 🌐 서비스 접속 방법
 
@@ -331,6 +374,21 @@ curl -k https://api.loventure.us/api/course/courses
 # Content Service (일기 관리)
 curl -k https://api.loventure.us/api/diaries/health
 curl -k https://api.loventure.us/api/diaries/diaries
+```
+
+### 📚 Swagger UI (API 문서화)
+**Swagger UI 접속:**
+- **Auth Service**: `https://swagger-auth.loventure.us`
+- **Content Service (Diaries)**: `https://swagger-diaries.loventure.us`
+- **Course Service**: `https://swagger-courses.loventure.us`
+
+**Swagger UI 상태 확인:**
+```bash
+# 모든 Swagger Ingress 확인
+kubectl get ingress -n loventure-app | grep swagger
+
+# 특정 Swagger UI 테스트
+curl -H "Host: swagger-auth.loventure.us" -k https://34.64.212.163
 ```
 
 ### 🔍 시스템 상태 확인
@@ -606,11 +664,3 @@ jobs:
 ### 프로젝트 문서
 - **[빠른 시작 가이드](./docs/QUICKSTART.md)**: 새로운 팀원을 위한 5분 설정 가이드
 - **[Ingress Controller 가이드](./docs/INGRESS_GUIDE.md)**: Nginx Ingress Controller 상세 가이드
-
-### 유용한 링크
-- [Terraform GCP Provider 문서](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [GKE 클러스터 관리 가이드](https://cloud.google.com/kubernetes-engine/docs)
-- [ArgoCD 공식 문서](https://argo-cd.readthedocs.io/)
-- [Argo Workflows 문서](https://argoproj.github.io/argo-workflows/)
-- [Argo Rollouts 문서](https://argoproj.github.io/argo-rollouts/)
-- [Helm 차트 가이드](https://helm.sh/docs/)

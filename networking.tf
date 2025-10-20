@@ -86,3 +86,67 @@ resource "google_compute_firewall" "allow_gke_nodes" {
   source_tags = ["gke-node"]
   target_tags = ["gke-node"]
 }
+
+# 방화벽 규칙 - Debezium → Kafka 통신 허용
+resource "google_compute_firewall" "allow_debezium_to_kafka" {
+  name    = "allow-debezium-to-kafka"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["9092"]
+  }
+
+  source_ranges = ["10.0.0.0/24"]
+  target_tags   = ["kafka"]
+}
+
+# 방화벽 규칙 - Debezium → PostgreSQL 통신 허용
+resource "google_compute_firewall" "allow_debezium_to_postgres" {
+  name    = "allow-debezium-to-postgres"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["31234"]
+  }
+
+  source_ranges = ["10.0.0.0/24"]
+  target_tags   = ["gke-node"]
+}
+
+# 방화벽 규칙 - Kafka UI 접근 허용
+resource "google_compute_firewall" "allow_kafka_ui" {
+  name    = "kafka-ui"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8081"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["kafka"]
+}
+
+# 방화벽 규칙 - 내부 네트워크 전체 통신 허용
+resource "google_compute_firewall" "allow_internal_all" {
+  name    = "${var.vpc_name}-allow-internal-all"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = ["10.0.0.0/24"]
+}

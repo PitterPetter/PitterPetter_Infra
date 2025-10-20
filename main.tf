@@ -6,7 +6,7 @@
 # GKE 클러스터 생성 (환경별로 Regional/Zonal 선택)
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
-  location = var.environment == "prod" ? var.gcp_region : var.gcp_zone
+  location = var.gcp_zone
   project  = var.gcp_project_id
 
   # 클러스터 삭제 시 노드 풀도 함께 삭제

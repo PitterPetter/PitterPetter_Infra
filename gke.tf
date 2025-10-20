@@ -7,7 +7,7 @@
 # GKE 노드 풀 생성 (1개 노드 풀에 여러 노드)
 resource "google_container_node_pool" "primary_nodes" {
   name       = var.node_pool_name
-  location   = var.environment == "prod" ? var.gcp_region : var.gcp_zone
+  location   = var.gcp_zone
   cluster    = google_container_cluster.primary.name
   project    = var.gcp_project_id
   node_count = var.node_count  # dev: 2개, prod: 3개

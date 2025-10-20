@@ -31,7 +31,8 @@ provider "google" {
 }
 
 # Provider가 GKE 클러스터 정보를 참조할 수 있도록 데이터 소스를 정의합니다.
-data "google_client_config" "default" {}
+data "google_client_config" "default" {
+}
 
 # Kubernetes Provider 설정
 provider "kubernetes" {

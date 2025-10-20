@@ -24,9 +24,9 @@ resource "kubernetes_namespace" "ingress_nginx" {
   }
 }
 
-# 고정 외부 IP 할당 (LoadBalancer용)
+# 고정 외부 IP 할당 (LoadBalancer용) - gateway_ip_enabled가 true일 때만 생성
 resource "google_compute_address" "ingress_ip" {
-  count  = var.ingress_nginx_enabled ? 1 : 0
+  count  = var.ingress_nginx_enabled && var.gateway_ip_enabled ? 1 : 0
   name   = "${var.vpc_name}-ingress-ip"
   region = var.gcp_region
 }
@@ -72,7 +72,7 @@ resource "helm_release" "ingress_nginx" {
         
         service = {
           type = "LoadBalancer"
-          loadBalancerIP = google_compute_address.ingress_ip[0].address
+          loadBalancerIP = var.gateway_ip_enabled ? google_compute_address.ingress_ip[0].address : null
           annotations = merge(
             {
               "cloud.google.com/load-balancer-type" = "External"
@@ -160,9 +160,9 @@ resource "helm_release" "ingress_nginx" {
 # 각 네임스페이스의 서비스에 접근하기 위한 ExternalName 서비스들
 # =============================================================================
 
-# ArgoCD 서버용 ExternalName 서비스 (argocd 네임스페이스)
+# ArgoCD 서버용 ExternalName 서비스 (비활성화 - 직접 서비스 사용)
 resource "kubernetes_service" "argocd_server_external" {
-  count = var.ingress_nginx_enabled ? 1 : 0
+  count = 0  # 비활성화 - 직접 argocd-server 서비스 사용
 
   metadata {
     name      = "argocd-server-external"
@@ -779,7 +779,6 @@ resource "kubernetes_ingress_v1" "argocd_ingress" {
     namespace = var.argocd_namespace
     annotations = {
       "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
-      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
       "nginx.ingress.kubernetes.io/backend-protocol" = "HTTP"
     }
   }
@@ -816,69 +815,9 @@ resource "kubernetes_ingress_v1" "argocd_ingress" {
   }
 
   depends_on = [
-    helm_release.ingress_nginx,
-    helm_release.argocd
-  ]
-}
-
-# =============================================================================
-# Kibana 전용 Ingress (monitoring 네임스페이스)
-# -----------------------------------------------------------------------------
-# Kibana 대시보드 접근을 위한 전용 Ingress
-resource "kubernetes_ingress_v1" "kibana_ingress" {
-  count = var.ingress_nginx_enabled ? 1 : 0
-
-  metadata {
-    name      = "kibana-ingress"
-    namespace = "monitoring"
-    annotations = {
-      "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
-      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-      "nginx.ingress.kubernetes.io/backend-protocol" = "HTTP"
-      "nginx.ingress.kubernetes.io/proxy-body-size" = "10m"
-      "nginx.ingress.kubernetes.io/proxy-read-timeout" = "300"
-      "nginx.ingress.kubernetes.io/proxy-send-timeout" = "300"
-      "nginx.ingress.kubernetes.io/enable-cors" = "true"
-      "nginx.ingress.kubernetes.io/cors-allow-origin" = "https://kibana.loventure.us, https://api.loventure.us, https://loventure.us"
-      "nginx.ingress.kubernetes.io/cors-allow-methods" = "GET, POST, PUT, DELETE, OPTIONS"
-      "nginx.ingress.kubernetes.io/cors-allow-headers" = "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
-      "nginx.ingress.kubernetes.io/cors-allow-credentials" = "true"
-    }
-  }
-
-  spec {
-    # Ingress Class 설정
-    ingress_class_name = "nginx"
-    
-    # SSL/TLS 설정
-    tls {
-      hosts = ["kibana.loventure.us"]
-      secret_name = var.ssl_enabled && var.ssl_certificate_name != "" ? data.google_compute_ssl_certificate.existing_cert[0].name : null
-    }
-
-    # Kibana 서버 규칙
-    rule {
-      host = "kibana.loventure.us"
-      http {
-        # 모든 경로 -> Kibana 서비스
-        path {
-          path      = "/"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "kibana-kibana"
-              port {
-                number = 5601
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [
     helm_release.ingress_nginx
   ]
 }
+
+
 
